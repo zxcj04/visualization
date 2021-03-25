@@ -1,0 +1,9 @@
+.vscode/
+obj/
+a.out
+main
+main.exe
+Data/
+*.pdf
+*.zip
+*.old
