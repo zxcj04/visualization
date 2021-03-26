@@ -10,16 +10,12 @@ WindowManagement::WindowManagement()
 
     this->pressing = {};
 
-    this->enable_cursor = true;
-
     this->show_shadow_points = false;
 
     this->enable_lit0 = true;
     this->enable_lit1 = true;
     this->enable_lit2 = true;
 
-    this->global_ambient[0] = 0.2;
-    this->global_ambient[1] = 0.2;
     this->global_ambient[2] = 0.2;
     this->global_ambient[3] = 1.0;
 
@@ -76,8 +72,15 @@ WindowManagement::~WindowManagement()
     glfwTerminate();
 }
 
+void WindowManagement::error_callback(int error, const char * description)
+{
+	cout << "Error: " << description << endl;
+}
+
 bool WindowManagement::init(string window_name)
 {
+    glfwSetErrorCallback(WindowManagement::error_callback);
+
     GLuint err = !glfwInit();
     if (err)
     {
@@ -138,11 +141,121 @@ bool WindowManagement::init(string window_name)
 
     system_init();
 
-    this->shader = Shader("./src/shaders/test.vert", "./src/shaders/test.frag");
+    this->shader = Shader("./src/shaders/tri.vert", "./src/shaders/tri.frag");
 
     cout << this->shader.ID << endl;
 
+    this->camera = Camera();
+
+    // -----------------------------------------
+
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // texture coord attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindVertexArray(0);
+
+
+    // -----------------------------------------
+
     return true;
+}
+
+void WindowManagement::generate_combo()
+{
+    // generate methods combo
+    this->methods["Iso Surface"] = METHODS::ISO_SURFACE;
+    this->methods["Slicing"] = METHODS::VOLUME_RENDERING;
+    this->methods["Stream Line"] = METHODS::STREAM_LINE;
+    this->methods["Sammon Mapping"] = METHODS::SAMMON_MAPPING;
+
+    // generate filenames combo
+    DIR *dp;
+    dirent *dirp;
+
+    if((dp = opendir("./Data/Scalar/")) != NULL)
+    {
+        while((dirp = readdir(dp)) != NULL)
+        {
+            string temp = dirp->d_name;
+            size_t index = temp.find(".inf");
+
+            if(index != string::npos) this->scalar_filenames.push_back(temp.substr(0, index));
+        }
+    }
+    closedir(dp);
+    if((dp = opendir("./Data/Vector")) != NULL)
+    {
+        while((dirp = readdir(dp)) != NULL)
+        {
+            string temp = dirp->d_name;
+            size_t index = temp.find(".vec");
+
+            if(index != string::npos) this->vector_filenames.push_back(temp.substr(0, index));
+        }
+    }
+    closedir(dp);
+    sort(this->scalar_filenames.begin(), this->scalar_filenames.end());
+    sort(this->vector_filenames.begin(), this->vector_filenames.end());
+
+    this->high_dim_filenames.push_back("Iris");
 }
 
 void WindowManagement::set_callback_functions()
@@ -165,7 +278,7 @@ void WindowManagement::set_callback_functions()
         static_cast<WindowManagement*>(glfwGetWindowUserPointer(w))->framebuffer_callback(w, width, height);
     };
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     glfwSetKeyCallback(this->window, keyboardCb);
     glfwSetMouseButtonCallback(window, mouseCb);
@@ -189,8 +302,6 @@ bool WindowManagement::system_init()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glEnable(GL_PROGRAM_POINT_SIZE);
-
-    glClearColor(0.15, 0.15, 0.5, 1.0);
 
     texture_init();
 
@@ -302,16 +413,9 @@ void WindowManagement::display()
 
     glViewport(0, 0, this->width, this->height);
 
-    render_scene(FIRST);
-    // render_scene(SECOND);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-    render_scene(GOD);
-
-	// glUseProgram(0);
-
-    render_scene(THIRD);
-
-    render_scene(INFO);
+    render_scene();
 }
 
 void draw_string(string inp, int x, int y)

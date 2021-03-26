@@ -11,22 +11,22 @@ void WindowManagement::keyboard_down(int key)
         case GLFW_KEY_ESCAPE:  // ESC
             exit(0);
 
-        case GLFW_KEY_Q:
-            this->enable_cursor = !this->enable_cursor;
+        // case GLFW_KEY_Q:
+        //     this->enable_cursor = !this->enable_cursor;
 
-            if(enable_cursor)
-            {
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        //     if(enable_cursor)
+        //     {
+        //         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-                glfwGetCursorPos(window, &x, &y);
+        //         glfwGetCursorPos(window, &x, &y);
 
-                this->last_x = x;
-                this->last_y = y;
-            }
-            else
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        //         this->last_x = x;
+        //         this->last_y = y;
+        //     }
+        //     else
+        //         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-            break;
+        //     break;
     }
 }
 
@@ -123,9 +123,6 @@ void WindowManagement::check_keyboard_pressing()
 
 void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action, int mods)
 {
-    if(!this->enable_cursor)
-        return;
-
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
 
@@ -135,34 +132,24 @@ void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action
 
 void WindowManagement::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    if(!this->enable_cursor)
-        return;
-
     // cout << xoffset << " " << yoffset << endl;
 
-    if (yoffset == 1)  // WHEEL UP
-    {
-
-    }
-    else if (yoffset == -1) //WHEEL DOWN
-    {
-
-    }
-
+    this->camera.zoom(yoffset);
 }
 
 void WindowManagement::cursor_callback(GLFWwindow * window, double x, double y)
 {
-    if(!this->enable_cursor)
-        return;
-
-    const float sensitivity = 0.15f;
-
     float x_offset = x - this->last_x;
     float y_offset = y - this->last_y;
 
     this->last_x = x;
     this->last_y = y;
+
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    {
+        this->camera.update_yaw(x_offset);
+        this->camera.update_pitch(y_offset);
+    }
 
     // this->entity_handler->rov->angle -= x_offset * sensitivity;
 

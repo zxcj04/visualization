@@ -8,6 +8,8 @@
 #include <random>
 #include <set>
 #include <map>
+#include <dirent.h>
+#include <algorithm>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -19,7 +21,9 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
+#include "./constants.hpp"
 #include "./Shader.hpp"
+#include "./Camera.hpp"
 
 #ifndef M_PI
 #define M_PI acos(-1)
@@ -41,7 +45,10 @@ class WindowManagement
         WindowManagement();
         ~WindowManagement();
 
+        static void error_callback(int, const char *);
+
         bool init(string);
+        void generate_combo();
         void set_callback_functions();
         bool system_init();
         bool light_init();
@@ -70,12 +77,8 @@ class WindowManagement
         void framebuffer_callback(GLFWwindow * w, int width, int height);
 
         void show_info();
-        void make_view(int scene);
-        void make_projection(int scene);
-        void make_scene(int scene);
-        void make_view_port(int scene);
         void make_light();
-        void render_scene(int scene);
+        void render_scene();
         void display();
 
         void mainloop();
@@ -87,6 +90,9 @@ class WindowManagement
         int height;
 
         float last_x, last_y;
+
+        map<string, METHODS> methods;
+        vector<string> scalar_filenames, vector_filenames, high_dim_filenames;
 
         int info_width;
         int info_height;
@@ -102,8 +108,6 @@ class WindowManagement
         bool enable_lit0;
         bool enable_lit1;
         bool enable_lit2;
-
-        bool enable_cursor;
 
         float  global_ambient[4];
 
@@ -131,7 +135,8 @@ class WindowManagement
         float white[4];
 
         Shader shader;
+        Camera camera;
 
-        // FT_Library ft;
-        // FT_Face face;
+        unsigned int VBO, VAO;
+        unsigned int VBO2, VAO2;
 };
