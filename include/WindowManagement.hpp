@@ -97,31 +97,7 @@ class WindowManagement
         int info_width;
         int info_height;
 
-        int horizon_distance;
-
-        set<int> pressing;
-
         float floor_color[401][401][3];
-
-        bool show_shadow_points;
-
-        bool enable_lit0;
-        bool enable_lit1;
-        bool enable_lit2;
-
-        float  global_ambient[4];
-
-        float lit_position[4];
-        float lit1_position[4];
-        float lit2_position[4];
-        float lit2_direction[4];
-
-        float lit2_angle;
-        float lit2_angle_y;
-        float  lit2_cutoff;
-        float  lit2_exponent;
-
-        float  lit1_diffuse[4];
 
         /*-----Create image space for textures -----*/
         unsigned char  checkboard[TSIZE][TSIZE][4];   /* checkboard textures */
@@ -130,9 +106,6 @@ class WindowManagement
         unsigned char  seaweed[256][256][4];
         unsigned char  bubble[256][256][4];
         unsigned int   textName[5];
-
-        float black[4];
-        float white[4];
 
         Shader shader;
         Camera camera;

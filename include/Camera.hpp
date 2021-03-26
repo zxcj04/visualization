@@ -24,10 +24,10 @@ class Camera
         void update_yaw(float);
         void update_pitch(float);
 
+        float left, right, top, bottom, near, far;
+
     private:
         glm::vec3 direction;
-        glm::vec3 up;
-        glm::vec3 right;
 
         glm::mat4 view;
 

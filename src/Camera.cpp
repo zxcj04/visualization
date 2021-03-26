@@ -6,6 +6,13 @@ Camera::Camera()
 
     this->yaw        = 0.0f;
     this->pitch      = 0.0f;
+
+    this->left   = -20 ;
+    this->right  =  20 ;
+    this->bottom = -20 ;
+    this->top    =  20 ;
+    this->near   = 0.1 ;
+    this->far    =  50 ;
 }
 
 void Camera::calc()
@@ -21,8 +28,8 @@ void Camera::calc()
 
     this->position *= zoom_value;
 
-    glm::vec3 right = glm::normalize(glm::cross(this->direction, glm::vec3(0.0f, 1.0f, 0.0f))); // member consider
-    this->up = glm::normalize(glm::cross(right, this->direction));
+    glm::vec3 view_right = glm::normalize(glm::cross(this->direction, glm::vec3(0.0f, 1.0f, 0.0f))); // member consider
+    glm::vec3 up = glm::normalize(glm::cross(view_right, this->direction));
 
     view = glm::lookAt(position, position + direction, up);
 }
@@ -46,10 +53,19 @@ void Camera::zoom(float offset)
 {
     static float sensitivity = 0.5f;
 
+    float ratio = zoom_value;
+
     zoom_value -= offset * sensitivity;
 
-    if(zoom_value < 0)
-        zoom_value = 0;
+    if(zoom_value < 1)
+        zoom_value = 1;
+
+    ratio /= zoom_value;
+
+    this->left /= ratio;
+    this->right /= ratio;
+    this->bottom /= ratio;
+    this->top /= ratio;
 }
 
 void Camera::update_yaw(float offset)

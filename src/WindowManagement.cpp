@@ -5,59 +5,6 @@
 WindowManagement::WindowManagement()
 {
     cout << "WindowManagement init" << endl;
-
-    this->horizon_distance = 20;
-
-    this->pressing = {};
-
-    this->show_shadow_points = false;
-
-    this->enable_lit0 = true;
-    this->enable_lit1 = true;
-    this->enable_lit2 = true;
-
-    this->global_ambient[2] = 0.2;
-    this->global_ambient[3] = 1.0;
-
-    this->lit_position[0] = 0.0;
-    this->lit_position[1] = 1.0;
-    this->lit_position[2] = 0.0;
-    this->lit_position[3] = 0.0;
-
-    this->lit1_position[0] = 0.0;
-    this->lit1_position[1] = 50.0;
-    this->lit1_position[2] = 0.0;
-    this->lit1_position[3] = 1.0;
-
-    this->lit2_position[0] = 0.0;
-    this->lit2_position[1] = 50.0;
-    this->lit2_position[2] = 0.0;
-    this->lit2_position[3] = 1.0;
-
-    this->lit2_direction[0] = 0.0;
-    this->lit2_direction[1] = 50.0;
-    this->lit2_direction[2] = 0.0;
-    this->lit2_direction[3] = 1.0;
-
-    this->lit2_angle = 0.0;
-    this->lit2_angle_y = 0.0;
-    this->lit2_cutoff = 60.0;
-    this->lit2_exponent = 8.0;
-
-    this->lit1_diffuse[0] = 0.075;
-    this->lit1_diffuse[1] = 0.10;
-    this->lit1_diffuse[2] = 0.075;
-    this->lit1_diffuse[3] = 1.0;
-
-    this->black[0] = 0;
-    this->black[1] = 0;
-    this->black[2] = 0;
-    this->black[3] = 1;
-
-    this->white[0] = 1;
-    this->white[1] = 1;
-    this->white[2] = 1;
-    this->white[3] = 0;
 }
 
 WindowManagement::~WindowManagement()
@@ -91,7 +38,7 @@ bool WindowManagement::init(string window_name)
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GLFW_MINOR_VERSION);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     #ifndef __APPLE__
         // dedug context
@@ -293,9 +240,9 @@ bool WindowManagement::system_init()
 
     glEnable(GL_DEPTH_TEST);
 
-    glShadeModel(GL_SMOOTH);
+    // glShadeModel(GL_SMOOTH);
 
-    glEnable(GL_NORMALIZE);
+    // glEnable(GL_NORMALIZE);
 
     glEnable(GL_BLEND);
 
@@ -336,12 +283,12 @@ bool WindowManagement::system_init()
 
     static float fog_color[]={0.15, 0.20, 0.20, 0.50};
 
-    glEnable(GL_FOG);                /*enable fog fade */
-    glFogi(GL_FOG_MODE, GL_LINEAR);  /*fog factor=GL_LINEAR,GL_EXP,or GL_EXP2*/
-    glFogf(GL_FOG_DENSITY, 0.15);    /*fog opacity(density)= 0.25*/
-    glFogf(GL_FOG_START, 250.0);       /*Setup two ends for GL_LINEAR*/
-    glFogf(GL_FOG_END, 400.0);
-    glFogfv(GL_FOG_COLOR, fog_color);/*set the fog color */
+    // glEnable(GL_FOG);                /*enable fog fade */
+    // glFogi(GL_FOG_MODE, GL_LINEAR);  /*fog factor=GL_LINEAR,GL_EXP,or GL_EXP2*/
+    // glFogf(GL_FOG_DENSITY, 0.15);    /*fog opacity(density)= 0.25*/
+    // glFogf(GL_FOG_START, 250.0);       /*Setup two ends for GL_LINEAR*/
+    // glFogf(GL_FOG_END, 400.0);
+    // glFogfv(GL_FOG_COLOR, fog_color);/*set the fog color */
 
     return true;
 }
@@ -357,38 +304,38 @@ bool WindowManagement::light_init()
     float  lit2_diffuse[] = {1.0, 1.0, 1.0, 1.0};
     float  lit2_ambient[] = {0.0, 0.0, 0.0, 0.0};
 
-    glEnable(GL_LIGHTING);
-    // glEnable(GL_COLOR_MATERIAL);
+    // glEnable(GL_LIGHTING);
+    // // glEnable(GL_COLOR_MATERIAL);
 
-    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient); /*global ambient*/
+    // glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+    // glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+    // glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient); /*global ambient*/
 
-    glEnable(GL_LIGHT0);
+    // glEnable(GL_LIGHT0);
 
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, lit_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, lit_specular);
+    // glLightfv(GL_LIGHT0, GL_DIFFUSE, lit_diffuse);
+    // glLightfv(GL_LIGHT0, GL_SPECULAR, lit_specular);
 
-    glEnable(GL_LIGHT1);
+    // glEnable(GL_LIGHT1);
 
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, lit1_diffuse);
-    glLightfv(GL_LIGHT1, GL_SPECULAR, lit_specular);
-    glLightfv(GL_LIGHT1, GL_AMBIENT, lit1_ambient);
-    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.0001);
-    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0);
-    glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0);
+    // glLightfv(GL_LIGHT1, GL_DIFFUSE, lit1_diffuse);
+    // glLightfv(GL_LIGHT1, GL_SPECULAR, lit_specular);
+    // glLightfv(GL_LIGHT1, GL_AMBIENT, lit1_ambient);
+    // glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.0001);
+    // glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0);
+    // glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0);
 
-    glEnable(GL_LIGHT2);
+    // glEnable(GL_LIGHT2);
 
-    glLightfv(GL_LIGHT2, GL_DIFFUSE, lit2_diffuse);
-    glLightfv(GL_LIGHT2, GL_SPECULAR, lit_specular);
-    glLightfv(GL_LIGHT2, GL_AMBIENT, lit2_ambient);
-    glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, lit2_cutoff);
-    glLightf(GL_LIGHT2, GL_SPOT_EXPONENT, lit2_exponent);
-    glLightfv(GL_LIGHT2, GL_AMBIENT, lit2_ambient);
-    glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0);
-    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.001);
-    glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 0);
+    // glLightfv(GL_LIGHT2, GL_DIFFUSE, lit2_diffuse);
+    // glLightfv(GL_LIGHT2, GL_SPECULAR, lit_specular);
+    // glLightfv(GL_LIGHT2, GL_AMBIENT, lit2_ambient);
+    // glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, lit2_cutoff);
+    // glLightf(GL_LIGHT2, GL_SPOT_EXPONENT, lit2_exponent);
+    // glLightfv(GL_LIGHT2, GL_AMBIENT, lit2_ambient);
+    // glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0);
+    // glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.001);
+    // glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 0);
 
     return true;
 }
@@ -444,7 +391,7 @@ void WindowManagement::show_info()
     // glViewport(width - info_width, 0, info_width, info_height);
     gltViewport(info_width, info_height);
 
-    glColor3f(1.0, 1.0, 1.0);
+    // glColor3f(1.0, 1.0, 1.0);
 
     vector<string> text = {
         // "Position: (" + to_string((int)this->entity_handler->rov->position[0]) + ", " + to_string((int)this->entity_handler->rov->position[1]) + ", " + to_string((int)this->entity_handler->rov->position[2]) + ")",

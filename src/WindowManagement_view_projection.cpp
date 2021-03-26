@@ -20,7 +20,14 @@ void WindowManagement::render_scene()
 
     glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)1200 / (float)900, 0.1f, 100.0f);
+    // glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)1200 / (float)900, 0.1f, 100.0f);
+
+    // cout << camera.left << ' ' << camera.right << ' ' << camera.bottom << ' ' << camera.top << ' ' << camera.near << ' ' << camera.far << endl;
+    glm::mat4 projection = glm::ortho(
+        this->camera.left   , this->camera.right,
+        this->camera.bottom , this->camera.top,
+        this->camera.near   , this->camera.far
+    );
 
     camera.use(shader);
 

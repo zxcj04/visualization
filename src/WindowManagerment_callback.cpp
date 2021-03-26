@@ -48,76 +48,76 @@ void WindowManagement::keyboard_repeat(int key)
 
 void WindowManagement::check_keyboard_pressing()
 {
-    if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-    {
-        this->lit1_diffuse[0] -= 0.005;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS ||
+    //     glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+    // {
+    //     this->lit1_diffuse[0] -= 0.005;
+    // }
 
-    if (glfwGetKey(window, GLFW_KEY_KP_5) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-    {
-        this->lit1_diffuse[1] -= 0.005;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_KP_5) == GLFW_PRESS ||
+    //     glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+    // {
+    //     this->lit1_diffuse[1] -= 0.005;
+    // }
 
-    if (glfwGetKey(window, GLFW_KEY_KP_6) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-    {
-        this->lit1_diffuse[2] -= 0.005;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_KP_6) == GLFW_PRESS ||
+    //     glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+    // {
+    //     this->lit1_diffuse[2] -= 0.005;
+    // }
 
-    if (glfwGetKey(window, GLFW_KEY_KP_7) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-    {
-        this->lit1_diffuse[0] += 0.005;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_KP_7) == GLFW_PRESS ||
+    //     glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
+    // {
+    //     this->lit1_diffuse[0] += 0.005;
+    // }
 
-    if (glfwGetKey(window, GLFW_KEY_KP_8) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
-    {
-        this->lit1_diffuse[1] += 0.005;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_KP_8) == GLFW_PRESS ||
+    //     glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
+    // {
+    //     this->lit1_diffuse[1] += 0.005;
+    // }
 
-    if (glfwGetKey(window, GLFW_KEY_KP_9) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)
-    {
-        this->lit1_diffuse[2] += 0.005;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_KP_9) == GLFW_PRESS ||
+    //     glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)
+    // {
+    //     this->lit1_diffuse[2] += 0.005;
+    // }
 
-    if(lit2_exponent > 128)
-        lit2_exponent = 128;
-    else if(lit2_exponent < 0)
-        lit2_exponent = 0;
+    // if(lit2_exponent > 128)
+    //     lit2_exponent = 128;
+    // else if(lit2_exponent < 0)
+    //     lit2_exponent = 0;
 
-    if(lit2_cutoff > 90)
-        lit2_cutoff = 90;
-    else if(lit2_cutoff < 10)
-        lit2_cutoff = 10;
+    // if(lit2_cutoff > 90)
+    //     lit2_cutoff = 90;
+    // else if(lit2_cutoff < 10)
+    //     lit2_cutoff = 10;
 
-    if(lit1_diffuse[0] > 1.0)
-        lit1_diffuse[0] = 1.0;
-    else if(lit1_diffuse[0] < 0.0)
-        lit1_diffuse[0] = 0.0;
+    // if(lit1_diffuse[0] > 1.0)
+    //     lit1_diffuse[0] = 1.0;
+    // else if(lit1_diffuse[0] < 0.0)
+    //     lit1_diffuse[0] = 0.0;
 
-    if(lit1_diffuse[1] > 1.0)
-        lit1_diffuse[1] = 1.0;
-    else if(lit1_diffuse[1] < 0.0)
-        lit1_diffuse[1] = 0.0;
+    // if(lit1_diffuse[1] > 1.0)
+    //     lit1_diffuse[1] = 1.0;
+    // else if(lit1_diffuse[1] < 0.0)
+    //     lit1_diffuse[1] = 0.0;
 
-    if(lit1_diffuse[2] > 1.0)
-        lit1_diffuse[2] = 1.0;
-    else if(lit1_diffuse[2] < 0.0)
-        lit1_diffuse[2] = 0.0;
+    // if(lit1_diffuse[2] > 1.0)
+    //     lit1_diffuse[2] = 1.0;
+    // else if(lit1_diffuse[2] < 0.0)
+    //     lit1_diffuse[2] = 0.0;
 
-    if(lit2_angle < 0)
-        lit2_angle += 360;
-    else if(lit2_angle > 360)
-        lit2_angle -= 360;
+    // if(lit2_angle < 0)
+    //     lit2_angle += 360;
+    // else if(lit2_angle > 360)
+    //     lit2_angle -= 360;
 
-    if(lit2_angle_y < 0)
-        lit2_angle_y += 360;
-    else if(lit2_angle_y > 360)
-        lit2_angle_y -= 360;
+    // if(lit2_angle_y < 0)
+    //     lit2_angle_y += 360;
+    // else if(lit2_angle_y > 360)
+    //     lit2_angle_y -= 360;
 }
 
 
