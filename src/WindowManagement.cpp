@@ -9,9 +9,6 @@ WindowManagement::WindowManagement()
 
 WindowManagement::~WindowManagement()
 {
-    // Destroy glText
-    gltTerminate();
-
 	glfwDestroyWindow(this->window);
 
     cout << "terminate" << endl;
@@ -53,9 +50,6 @@ bool WindowManagement::init(string window_name)
 
     this->last_x = width/2;
     this->last_y = height/2;
-
-    info_width = width / 2;
-    info_height = height / 2;
 
     this->window = glfwCreateWindow(width, height, window_name.c_str(), NULL, NULL);
 
@@ -162,6 +156,8 @@ bool WindowManagement::init(string window_name)
 
     // -----------------------------------------
 
+    generate_combo();
+
     return true;
 }
 
@@ -169,9 +165,6 @@ void WindowManagement::generate_combo()
 {
     // generate methods combo
     this->methods["Iso Surface"] = METHODS::ISO_SURFACE;
-    this->methods["Slicing"] = METHODS::VOLUME_RENDERING;
-    this->methods["Stream Line"] = METHODS::STREAM_LINE;
-    this->methods["Sammon Mapping"] = METHODS::SAMMON_MAPPING;
 
     // generate filenames combo
     DIR *dp;
@@ -188,21 +181,8 @@ void WindowManagement::generate_combo()
         }
     }
     closedir(dp);
-    if((dp = opendir("./Data/Vector")) != NULL)
-    {
-        while((dirp = readdir(dp)) != NULL)
-        {
-            string temp = dirp->d_name;
-            size_t index = temp.find(".vec");
 
-            if(index != string::npos) this->vector_filenames.push_back(temp.substr(0, index));
-        }
-    }
-    closedir(dp);
     sort(this->scalar_filenames.begin(), this->scalar_filenames.end());
-    sort(this->vector_filenames.begin(), this->vector_filenames.end());
-
-    this->high_dim_filenames.push_back("Iris");
 }
 
 void WindowManagement::set_callback_functions()
@@ -259,24 +239,7 @@ bool WindowManagement::system_init()
                             {0.12, 0.31, 0.26}
                           };
 
-    random_device rd;
-    // default_random_engine gen = default_random_engine(rd());
-    mt19937 gen(random_device{}());
-
-    uniform_int_distribution<int> dis(0,3);
-
-    for(int i=-200;i<201;i++)
-        for(int j=-200;j<201;j++)
-        {
-            int r = dis(gen);
-
-            floor_color[i + 200][j + 200][0] = colors[r][0];
-            floor_color[i + 200][j + 200][1] = colors[r][1];
-            floor_color[i + 200][j + 200][2] = colors[r][2];
-        }
-
     light_init();
-    font_init();
 
     // glCullFace(GL_BACK);
     // glEnable(GL_CULL_FACE);
@@ -340,18 +303,6 @@ bool WindowManagement::light_init()
     return true;
 }
 
-bool WindowManagement::font_init()
-{
-    if (!gltInit())
-	{
-		fprintf(stderr, "Failed to initialize glText\n");
-		glfwTerminate();
-		return false;
-	}
-
-    return true;
-}
-
 void WindowManagement::display()
 {
     glClear(GL_COLOR_BUFFER_BIT| GL_DEPTH_BUFFER_BIT);
@@ -365,67 +316,6 @@ void WindowManagement::display()
     render_scene();
 }
 
-void draw_string(string inp, int x, int y)
-{
-    // Creating text
-    GLTtext *text = gltCreateText();
-    gltSetText(text, inp.c_str());
-
-    // Begin text drawing (this for instance calls glUseProgram)
-    gltBeginDraw();
-
-        // Draw any amount of text between begin and end
-        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
-        gltDrawText2D(text, x, y, 1.15f);
-
-    // Finish drawing text
-    gltEndDraw();
-	glUseProgram(0);
-
-    // Deleting text
-    gltDeleteText(text);
-}
-
-void WindowManagement::show_info()
-{
-    // glViewport(width - info_width, 0, info_width, info_height);
-    gltViewport(info_width, info_height);
-
-    // glColor3f(1.0, 1.0, 1.0);
-
-    vector<string> text = {
-        // "Position: (" + to_string((int)this->entity_handler->rov->position[0]) + ", " + to_string((int)this->entity_handler->rov->position[1]) + ", " + to_string((int)this->entity_handler->rov->position[2]) + ")",
-        // "Facing  : (" + to_string(this->entity_handler->rov->facing[0]) + ", " + to_string(this->entity_handler->rov->facing[1]) + ", " + to_string(this->entity_handler->rov->facing[2]) + ")",
-        // "Angel   :  " + to_string((int)this->entity_handler->rov->angle) ,
-        // "Speed   :"
-    };
-
-    int origin_y = info_height - 15;
-
-    int y = 15;
-
-    for(auto &s: text)
-    {
-        draw_string(s, 9, y);
-
-        y += 30;
-        origin_y -= 30;
-    }
-
-    vector<string> which = {"",
-                            "",
-                            ""};
-
-    for(int i = 0; i < 3 ; i++)
-    {
-        // draw_string(which[i], 9, y);
-
-        // draw_speed_bar(origin_y, fabs(this->entity_handler->rov->speed[i] / 4), info_width);
-
-        origin_y -= 32;
-    }
-}
-
 void WindowManagement::mainloop()
 {
     while (!glfwWindowShouldClose(this->window))
@@ -437,7 +327,5 @@ void WindowManagement::mainloop()
 
         /* Poll for and process events */
         glfwPollEvents();
-
-        check_keyboard_pressing();
     }
 }
