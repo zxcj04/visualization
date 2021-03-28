@@ -7,12 +7,12 @@ Camera::Camera()
     this->yaw        = 0.0f;
     this->pitch      = 0.0f;
 
-    this->left   = -20 ;
-    this->right  =  20 ;
-    this->bottom = -20 ;
-    this->top    =  20 ;
-    this->near   = 0.1 ;
-    this->far    =  50 ;
+    this->left   =  -200 ;
+    this->right  =   200 ;
+    this->bottom =  -200 ;
+    this->top    =   200 ;
+    this->near   =  -800 ;
+    this->far    =   800 ;
 }
 
 void Camera::calc()

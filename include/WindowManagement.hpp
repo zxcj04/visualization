@@ -17,9 +17,10 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#include "./constants.hpp"
-#include "./Shader.hpp"
-#include "./Camera.hpp"
+#include "constants.hpp"
+#include "Shader.hpp"
+#include "Camera.hpp"
+#include "Volume.hpp"
 
 #ifndef M_PI
 #define M_PI acos(-1)
@@ -86,6 +87,8 @@ class WindowManagement
 
         Shader shader;
         Camera camera;
+
+        Volume *test_volume;
 
         unsigned int VBO, VAO;
         unsigned int VBO2, VAO2;

@@ -183,6 +183,14 @@ void WindowManagement::generate_combo()
     closedir(dp);
 
     sort(this->scalar_filenames.begin(), this->scalar_filenames.end());
+
+    this->test_volume = new Volume("./Data/Scalar/Carp.inf", "./Data/Scalar/Carp.raw");
+
+    // for(auto it: this->scalar_filenames)
+    // {
+    //     Volume tmp("./Data/Scalar/" + it + ".inf", "");
+    // }
+    //     cout << it << endl;
 }
 
 void WindowManagement::set_callback_functions()
@@ -327,5 +335,230 @@ void WindowManagement::mainloop()
 
         /* Poll for and process events */
         glfwPollEvents();
+
+        // break;
     }
+}
+
+
+//----------------------------------------------------------------
+
+
+
+template <typename T>
+void WindowManagement::load_image(T &image, string filename, int width, int height)
+{
+    if(height == 0)
+        height = width;
+
+    ifstream file(filename.c_str(), ios::in | ios::binary);
+
+    unsigned char ch;
+
+    // unsigned char ***image = new unsigned char**[256];
+
+    // for(int i = 0; i < 256; i++)
+    // {
+    //     image[i] = new unsigned char*[256];
+
+    //     for(int j = 0; j < 256; j++)
+    //         image[i][j] = new unsigned char[4];
+    // }
+
+    for(int i = 0; i < 138; i++)
+        file.get();
+
+    for(int i = 0; i < 256*256*4 ; i++)
+    {
+        ch = file.get();
+
+        int k =  i % 4;
+
+        if(k == 0)
+            k = 2;
+        else if(k == 2)
+            k = 0;
+
+        // cout << (int) ch << " ";
+
+        // if(k == 3)
+        //     cout << endl;
+
+        image[i / 4 / 256][i / 4 % 256][k] = ch;
+    }
+
+    file.close();
+}
+
+bool WindowManagement::texture_init()
+{
+    // load_image(sand, "./assets/sand.bmp", 256);
+    // load_image(seaweed, "./assets/seaweed.bmp", 256);
+    // load_image(bubble, "./assets/bubble.bmp", 256);
+
+    glGenTextures(5, textName);
+
+    // make_check_pattern();
+
+    // glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
+    // glBindTexture(GL_TEXTURE_2D, textName[0]);
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TSIZE, TSIZE, 0, GL_RGBA,
+    //              GL_UNSIGNED_BYTE, checkboard);
+
+    // make_brick_pattern();
+
+    // glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
+    // glBindTexture(GL_TEXTURE_2D, textName[1]);
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TSIZE, TSIZE, 0, GL_RGBA,
+    //              GL_UNSIGNED_BYTE, brick);
+
+    // glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
+    // glBindTexture(GL_TEXTURE_2D, textName[2]);
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA,
+    //              GL_UNSIGNED_BYTE, sand);
+
+    // glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
+    // glBindTexture(GL_TEXTURE_2D, textName[3]);
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA,
+    //              GL_UNSIGNED_BYTE, seaweed);
+
+    // glActiveTexture(GL_TEXTURE0 + 1); // Texture unit 1
+    // glBindTexture(GL_TEXTURE_2D, textName[4]);
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA,
+    //              GL_UNSIGNED_BYTE, bubble);
+
+    // glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    return true;
+}
+
+//-----------------------------------------
+
+
+
+void WindowManagement::render_scene()
+{
+    this->shader.use();
+
+    glm::mat4 projection = glm::ortho(
+        this->camera.left   , this->camera.right,
+        this->camera.bottom , this->camera.top,
+        this->camera.near   , this->camera.far
+    );
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-149 / 2, -208 / 2, -110 / 2));
+
+    shader.set_uniform("projection", projection);
+    shader.set_uniform("model", model);
+    camera.use(shader);
+
+    this->test_volume->draw();
+
+    // -----------------------------------
+    glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+    shader.set_uniform("projection", projection);
+    // calculate the model matrix for each object and pass it to shader before drawing
+    model = glm::mat4(1.0f);
+    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+    shader.set_uniform("model", model);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+}
+
+//-------------------------------------------------
+
+
+
+void WindowManagement::keyboard_down(int key)
+{
+    // cout << (char) tolower(key) << endl;
+
+    static double x, y;
+
+    switch(key)
+    {
+        case GLFW_KEY_ESCAPE:  // ESC
+            exit(0);
+
+        case GLFW_KEY_R:
+            this->shader.reload();
+
+            break;
+    }
+}
+
+
+void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+
+    }
+
+}
+
+void WindowManagement::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    // cout << xoffset << " " << yoffset << endl;
+
+    this->camera.zoom(yoffset);
+}
+
+void WindowManagement::cursor_callback(GLFWwindow * window, double x, double y)
+{
+    float x_offset = x - this->last_x;
+    float y_offset = y - this->last_y;
+
+    this->last_x = x;
+    this->last_y = y;
+
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    {
+        this->camera.update_yaw(x_offset);
+        this->camera.update_pitch(y_offset);
+    }
+}
+
+void WindowManagement::keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if(action == GLFW_PRESS)
+        keyboard_down(key);
+}
+
+void WindowManagement::framebuffer_callback(GLFWwindow * w, int new_w, int new_h)
+{
+    this->width = new_w;
+    this->height = new_h;
 }
