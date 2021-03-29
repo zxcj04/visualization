@@ -184,7 +184,7 @@ void WindowManagement::generate_combo()
 
     sort(this->scalar_filenames.begin(), this->scalar_filenames.end());
 
-    this->test_volume = new Volume("./Data/Scalar/Carp.inf", "./Data/Scalar/Carp.raw");
+    this->test_volume = new Volume("./Data/Scalar/Body_CT.inf", "./Data/Scalar/Body_CT.raw");
 
     // for(auto it: this->scalar_filenames)
     // {
@@ -319,7 +319,7 @@ void WindowManagement::display()
 
     glViewport(0, 0, this->width, this->height);
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
 
     render_scene();
 }

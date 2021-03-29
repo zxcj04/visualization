@@ -331,7 +331,7 @@ Volume::Volume(string inf_filename, string raw_filename)
     else if(this->valuetype == TYPE::FLOAT)
         read_data<float>(this->raw_filename);
 
-    calc_vertex(80);
+    calc_vertex(350);
 
     setup_vao();
 }
@@ -372,16 +372,16 @@ void Volume::read_inf(string inf_filename)
 
         if(regex_search(new_line, matched, resolution))
         {
-            this->resolution.x = stoi(matched[1]);
+            this->resolution.x = stoi(matched[5]);
             this->resolution.y = stoi(matched[3]);
-            this->resolution.z = stoi(matched[5]);
+            this->resolution.z = stoi(matched[1]);
         }
 
         if(regex_search(new_line, matched, voxelsize))
         {
-            this->voxelsize.x = stof(matched[2]);
+            this->voxelsize.x = stof(matched[8]);
             this->voxelsize.y = stof(matched[5]);
-            this->voxelsize.z = stof(matched[8]);
+            this->voxelsize.z = stof(matched[2]);
         }
 
         if(regex_search(new_line, matched, sampletype) || regex_search(new_line, matched, valuetype))
@@ -506,6 +506,8 @@ void Volume::read_data(string raw_filename)
             {
                 int index = x * this->resolution.y * this->resolution.z + y * this->resolution.z + z;
 
+                index *= this->bytesize;
+
                 if(this->endian != endian)
                     reverse(buffer + index, buffer + index + this->bytesize);
 
@@ -517,6 +519,8 @@ void Volume::read_data(string raw_filename)
             }
         }
     }
+
+    delete [] buffer;
 }
 
 glm::vec3 interpolation(glm::vec3 p1, glm::vec3 p2, float v1, float v2, glm::vec3 voxelsize, int iso_value)
@@ -525,11 +529,6 @@ glm::vec3 interpolation(glm::vec3 p1, glm::vec3 p2, float v1, float v2, glm::vec
 
     p1 *= voxelsize;
     p2 *= voxelsize;
-
-    if(fabs(iso_value - v1) < 0.001)
-        return p1;
-    else if(fabs(iso_value - v2) < 0.001)
-        return p2;
 
     return p1 + ratio * (p2 - p1);
 }
@@ -564,14 +563,14 @@ void Volume::calc_vertex(int iso_value)
         {
             for(int z = 0; z < this->resolution.z - 1; z++)
             {
-                grid[0] = glm::vec3(    x,     y,     z);
-                grid[1] = glm::vec3(    x,     y, z + 1);
-                grid[2] = glm::vec3(    x, y + 1, z + 1);
-                grid[3] = glm::vec3(    x, y + 1,     z);
-                grid[4] = glm::vec3(x + 1,     y,     z);
-                grid[5] = glm::vec3(x + 1,     y, z + 1);
+                grid[0] = glm::vec3(x    , y    , z    );
+                grid[1] = glm::vec3(x    , y    , z + 1);
+                grid[2] = glm::vec3(x    , y + 1, z + 1);
+                grid[3] = glm::vec3(x    , y + 1, z    );
+                grid[4] = glm::vec3(x + 1, y    , z    );
+                grid[5] = glm::vec3(x + 1, y    , z + 1);
                 grid[6] = glm::vec3(x + 1, y + 1, z + 1);
-                grid[7] = glm::vec3(x + 1, y + 1,     z);
+                grid[7] = glm::vec3(x + 1, y + 1, z    );
 
                 int table_index = 0;
 
