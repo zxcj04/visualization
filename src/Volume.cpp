@@ -713,6 +713,9 @@ void Volume::setup_vao()
 
     this->vao.count = vertex.size() / 3;
 
+    vertex.clear();
+    gradient.clear();
+
     glBindVertexArray(0);
 }
 
