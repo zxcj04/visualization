@@ -7,3 +7,5 @@ Data/
 *.pdf
 *.zip
 *.old
+imgui.ini
+out
