@@ -8,6 +8,7 @@ in float clipped;
 
 uniform vec3 view_pos;
 uniform vec3 light_pos;
+uniform vec3 light_color;
 
 void main()
 {
@@ -23,9 +24,6 @@ void main()
 	// return;
 
     vec3 norm = normalize(gradient);
-
-	// vec3 light_pos = vec3(0, 1000, 0);
-	vec3 light_color = vec3(1.0, 1.0, 1.0);
 
 	vec3 view_d = normalize(view_pos);
 

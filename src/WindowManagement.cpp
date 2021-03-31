@@ -113,10 +113,15 @@ bool WindowManagement::init(string window_name)
 
     this->camera = Camera();
 
+    this->light_color = glm::vec3(1.0f, 1.0f, 1.0f);
+    this->clear_color = glm::vec4(0.75f, 0.75f, 0.75f, 1.0f);
+
     this->clip_x = 50;
     this->clip_y = 50;
     this->clip_z = 50;
     this->clip = 50;
+
+    this->showing_last = false;
 
     // -----------------------------------------
 
@@ -222,6 +227,7 @@ void WindowManagement::generate_combo()
     //     Volume tmp("./Data/Scalar/" + it + ".inf", "");
     // }
     //     cout << it << endl;
+
 }
 
 void WindowManagement::set_callback_functions()
@@ -350,15 +356,13 @@ void WindowManagement::display()
 
     glViewport(0, 0, this->width, this->height);
 
-    glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
+    glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
 
     render_scene();
 }
 
 void WindowManagement::mainloop()
 {
-    this->test_volume = new Volume("./Data/Scalar/cthead.inf", "./Data/Scalar/cthead.raw");
-
     while (!glfwWindowShouldClose(this->window))
     {
         this->display();
@@ -370,6 +374,18 @@ void WindowManagement::mainloop()
         ImGui::Render();
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if(ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+        {
+            // this->light_color = glm::vec3(0.5f, 0.5f, 0.5f);
+            this->clear_color = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f);
+        }
+        else
+        {
+            // this->light_color = glm::vec3(1.0f, 1.0f, 1.0f);
+            this->clear_color = glm::vec4(0.75f, 0.75f, 0.75f, 1.0f);
+        }
+
 
         /* Swap front and back buffers */
         glfwSwapBuffers(this->window);
@@ -506,17 +522,19 @@ bool WindowManagement::texture_init()
 
 void WindowManagement::imgui()
 {
+    // cout << clip << endl;
     static bool is_load = false;
     static bool is_show = false;
     static string selected_inf = "engine";
     static string selected_raw = "engine";
+    static int iso_value = 80;
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(250, 325), ImGuiCond_Once);
 
     ImGui::Begin("Is that a bird?");
     {
@@ -553,27 +571,82 @@ void WindowManagement::imgui()
             ImGui::EndCombo();
         }
 
+        ImGui::InputInt("Iso Value", &iso_value);
+
         if (ImGui::Button("Load", ImVec2(100.0f, 30.0f)))
         {
+            if(!this->showing_last && this->volumes.size() > 0)
+                this->volumes.pop_back();
+
             is_load = true;
 
-            cout << "Load" << endl;
+            // if(this->test_volume != NULL)
+            //     delete this->test_volume;
+
+            this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", iso_value));
+
+            cout << "Load: " << this->volumes.back().vao.count << endl;
+
+            this->showing_last = false;
         }
 
-        // if (!is_show && is_load && ImGui::Button("Show"))
-        // {
-        //     is_show = true;
-        // }
+        if(this->volumes.size() > 0)
+            ImGui::SameLine();
 
-        // if (is_load && ImGui::Button("Clear"))
-        // {
-        //     is_load = false;
-        //     is_show = false;
-        // }
+        if (this->volumes.size() > 0 && ImGui::Button("Clear", ImVec2(100.0f, 30.0f)))
+        {
+            this->volumes.clear();
+
+            is_load = false;
+
+            cout << "Clear" << endl;
+        }
+
+        if (is_load && ImGui::Button("Show", ImVec2(100.0f, 30.0f)))
+        {
+            this->showing_last = true;
+
+            Volume tmp = this->volumes.back();
+
+            this->volumes.clear();
+
+            this->volumes.push_back(tmp);
+
+            cout << "Show" << endl;
+
+            is_load = false;
+        }
+
+        if(is_load)
+            ImGui::SameLine();
+
+        if (is_load && this->volumes.size() > 1 && ImGui::Button("Blend", ImVec2(100.0f, 30.0f)))
+        {
+            this->showing_last = true;
+
+            cout << "Blend" << endl;
+
+            is_load = false;
+        }
+
+        if(!is_load || this->volumes.size() <= 1)
+            ImGui::NewLine();
+
+        ImGui::Text("Slicing Plane");
+
+        ImGui::SliderFloat("x", &(this->clip_x), -1.0f, 1.0f);
+        ImGui::SliderFloat("y", &(this->clip_y), -1.0f, 1.0f);
+        ImGui::SliderFloat("z", &(this->clip_z), -1.0f, 1.0f);
+        ImGui::SliderFloat("clip", &(this->clip), -200.0f, 200.0f);
+        {
+            glm::vec3 tmp = glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z));
+
+            this->clip_x = tmp.x;
+            this->clip_y = tmp.y;
+            this->clip_z = tmp.z;
+        }
     }
     ImGui::End();
-
-    // this->test_volume = new Volume("./Data/Scalar/cthead.inf", "./Data/Scalar/cthead.raw");
 }
 
 
@@ -601,28 +674,23 @@ void WindowManagement::render_scene()
         );
     }
 
-    shader.set_uniform("clip", glm::vec4(glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z)), clip));
+    shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
     shader.set_uniform("projection", projection);
+    shader.set_uniform("light_color", light_color);
     camera.use(shader);
 
     glm::mat4 model = glm::mat4(1.0f);
 
-    if(true)
+    for(int i = 0; i < this->volumes.size(); i++)
     {
-        model = glm::translate(model, -glm::vec3(this->test_volume->resolution) / 2.0f * this->test_volume->voxelsize);
+        if(i == this->volumes.size() - 1 && !this->showing_last)
+            continue;
+
+        model = glm::translate(glm::mat4(1.0f), -glm::vec3(this->volumes[i].resolution) / 2.0f * this->volumes[i].voxelsize);
         shader.set_uniform("model", model);
 
-        this->test_volume->draw();
+        this->volumes[i].draw();
     }
-
-    // -----------------------------------
-    glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-    shader.set_uniform("projection", projection);
-    // calculate the model matrix for each object and pass it to shader before drawing
-    model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(2.5f, 2.5f, 2.5f));
-    shader.set_uniform("model", model);
-    // glDrawArrays(GL_TRIANGLES, 0, 36);
 
     glBindVertexArray(0);
 }
@@ -651,7 +719,7 @@ void WindowManagement::keyboard_down(int key)
 
 void WindowManagement::check_keyboard_pressing()
 {
-    if(ImGui::IsAnyMouseDown() && ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+    if(ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
         return;
 
     if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS ||
@@ -720,10 +788,10 @@ void WindowManagement::check_keyboard_pressing()
     this->clip_y = tmp.y;
     this->clip_z = tmp.z;
 
-    if(clip > 200)
-        clip = 200;
-    if(clip < -200)
-        clip = -200;
+    if(this->clip > 200)
+        this->clip = 200;
+    if(this->clip < -200)
+        this->clip = -200;
 }
 
 void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action, int mods)
@@ -737,7 +805,7 @@ void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action
 
 void WindowManagement::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    if(ImGui::IsAnyMouseDown() || ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+    if(ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
         return;
     // cout << xoffset << " " << yoffset << endl;
 
@@ -746,14 +814,14 @@ void WindowManagement::scroll_callback(GLFWwindow* window, double xoffset, doubl
 
 void WindowManagement::cursor_callback(GLFWwindow * window, double x, double y)
 {
-    if(ImGui::IsAnyMouseDown() || ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
-        return;
-
     float x_offset = x - this->last_x;
     float y_offset = y - this->last_y;
 
     this->last_x = x;
     this->last_y = y;
+
+    if(ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+        return;
 
     if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
@@ -764,7 +832,7 @@ void WindowManagement::cursor_callback(GLFWwindow * window, double x, double y)
 
 void WindowManagement::keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if(ImGui::IsAnyMouseDown() || ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+    if(ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
         return;
 
     if(action == GLFW_PRESS)

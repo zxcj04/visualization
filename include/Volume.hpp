@@ -31,7 +31,7 @@ class Volume
 {
     public:
 
-        Volume(string, string);
+        Volume(string, string, int iso_value = 80);
         ~Volume();
 
         void read_inf(string);

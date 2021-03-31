@@ -85,6 +85,8 @@ class WindowManagement
         int width;
         int height;
 
+        glm::vec4 clear_color;
+
         float last_x, last_y;
 
         map<string, METHODS> methods;
@@ -96,10 +98,14 @@ class WindowManagement
         Shader shader;
         Camera camera;
 
-        Volume *test_volume;
+        bool showing_last;
 
         unsigned int VBO, VAO;
         unsigned int VBO2, VAO2;
 
+        glm::vec3 light_color;
         float clip_x, clip_y, clip_z, clip;
+
+        // Volume *test_volume;
+        vector<Volume> volumes;
 };

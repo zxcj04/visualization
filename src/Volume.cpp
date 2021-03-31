@@ -296,7 +296,7 @@ int triTable[256][16] = {
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 };
 
-Volume::Volume(string inf_filename, string raw_filename)
+Volume::Volume(string inf_filename, string raw_filename, int iso_value)
 {
     this->inf_filename = inf_filename;
     this->raw_filename = raw_filename;
@@ -334,7 +334,7 @@ Volume::Volume(string inf_filename, string raw_filename)
 
     calc_gradient();
 
-    calc_vertex(1000);
+    calc_vertex(iso_value);
 
     setup_vao();
 }
