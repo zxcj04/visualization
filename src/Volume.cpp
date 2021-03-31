@@ -309,6 +309,7 @@ Volume::Volume(string inf_filename, string raw_filename)
     read_inf(this->inf_filename);
 
     this->data.resize(this->resolution[0], vector<vector<float> >(this->resolution[1], vector<float>(this->resolution[2], 1)));
+    this->gradient.resize(this->resolution[0], vector<vector<glm::vec3> >(this->resolution[1], vector<glm::vec3>(this->resolution[2], glm::vec3())));
 
     if(this->valuetype == TYPE::UNSIGNED_CHAR)
         read_data<unsigned char>(this->raw_filename);
@@ -331,7 +332,9 @@ Volume::Volume(string inf_filename, string raw_filename)
     else if(this->valuetype == TYPE::FLOAT)
         read_data<float>(this->raw_filename);
 
-    calc_vertex(350);
+    calc_gradient();
+
+    calc_vertex(1000);
 
     setup_vao();
 }
@@ -523,17 +526,91 @@ void Volume::read_data(string raw_filename)
     delete [] buffer;
 }
 
-glm::vec3 interpolation(glm::vec3 p1, glm::vec3 p2, float v1, float v2, glm::vec3 voxelsize, int iso_value)
+void Volume::calc_gradient()
+{
+    for(int x = 0; x < this->resolution.x; x++)
+    {
+        for(int y = 0; y < this->resolution.y; y++)
+        {
+            for(int z = 0; z < this->resolution.z; z++)
+            {
+                glm::vec3 tmp;
+
+                if( x == this->resolution.x - 1 )
+                {
+                    tmp.x  = this->data[x][y][z] - this->data[x - 1][y][z];
+                    tmp.x /= this->voxelsize.x;
+                }
+                else if( x == 0 )
+                {
+                    tmp.x  = this->data[x + 1][y][z] - this->data[x][y][z];
+                    tmp.x /= this->voxelsize.x;
+                }
+                else
+                {
+                    tmp.x  = this->data[x + 1][y][z] - this->data[x - 1][y][z];
+                    tmp.x /= this->voxelsize.x * 2;
+                }
+
+                if( y == this->resolution.y - 1 )
+                {
+                    tmp.y  = this->data[x][y][z] - this->data[x][y - 1][z];
+                    tmp.y /= this->voxelsize.y;
+                }
+                else if( y == 0 )
+                {
+                    tmp.y  = this->data[x][y + 1][z] - this->data[x][y][z];
+                    tmp.y /= this->voxelsize.y;
+                }
+                else
+                {
+                    tmp.y  = this->data[x][y + 1][z] - this->data[x][y - 1][z];
+                    tmp.y /= this->voxelsize.y * 2;
+                }
+
+                if( z == this->resolution.z - 1 )
+                {
+                    tmp.z  = this->data[x][y][z] - this->data[x][y][z - 1];
+                    tmp.z /= this->voxelsize.z;
+                }
+                else if( z == 0 )
+                {
+                    tmp.z  = this->data[x][y][z + 1] - this->data[x][y][z];
+                    tmp.z /= this->voxelsize.z;
+                }
+                else
+                {
+                    tmp.z  = this->data[x][y][z + 1] - this->data[x][y][z - 1];
+                    tmp.z /= this->voxelsize.z * 2;
+                }
+
+
+                // tmp.y  = this->data[x][y][z] - this->data[x][y - 1][z];
+                // tmp.y /= this->voxelsize.y;
+
+                // tmp.z  = this->data[x][y][z] - this->data[x][y][z - 1];
+                // tmp.z /= this->voxelsize.z;
+
+                this->gradient[x][y][z] = tmp;
+            }
+        }
+    }
+}
+
+void calc_interpolation(glm::vec3 &vertex, glm::vec3 &vertex_gradient, glm::vec3 p1, glm::vec3 p2, float v1, float v2, glm::vec3 g1, glm::vec3 g2, glm::vec3 voxelsize, int iso_value)
 {
     float ratio = (iso_value - v1) / (v2 - v1);
 
     p1 *= voxelsize;
     p2 *= voxelsize;
+    g1 *= voxelsize;
+    g2 *= voxelsize;
 
-    return p1 + ratio * (p2 - p1);
+    vertex          = p1 + ratio * (p2 - p1);
+    vertex_gradient = g1 + ratio * (g2 - g1);
 }
 
-void calc_intersection(glm::vec3 *vertex, glm::vec3 *grid, float *grid_value, int edge, glm::vec3 voxelsize, int iso_value)
+void calc_intersection(glm::vec3 *vertex, glm::vec3 *vertex_gradient, glm::vec3 *grid, float *grid_value, glm::vec3 *grid_gradient, int edge, glm::vec3 voxelsize, int iso_value)
 {
     int p1_table[] = { 0,1,2,3,4,5,6,7,0,1,2,3 };
     int p2_table[] = { 1,2,3,0,5,6,7,4,4,5,6,7 };
@@ -541,14 +618,20 @@ void calc_intersection(glm::vec3 *vertex, glm::vec3 *grid, float *grid_value, in
     for(int i = 0, now = 1 ; i < 12 ; i++, now <<= 1)
     {
         if(edge & now)
-            vertex[i] = interpolation(
+        {
+            calc_interpolation(
+                vertex[i],
+                vertex_gradient[i],
                 grid[p1_table[i]],
                 grid[p2_table[i]],
                 grid_value[p1_table[i]],
                 grid_value[p2_table[i]],
+                grid_gradient[p1_table[i]],
+                grid_gradient[p2_table[i]],
                 voxelsize,
                 iso_value
             );
+        }
     }
 }
 
@@ -556,6 +639,7 @@ void Volume::calc_vertex(int iso_value)
 {
     glm::vec3 grid[8];
     float grid_value[8];
+    glm::vec3 grid_gradient[8];
 
     for(int x = 0; x < this->resolution.x - 1; x++)
     {
@@ -577,6 +661,7 @@ void Volume::calc_vertex(int iso_value)
                 for(int i = 0, tmp = 1; i < 8; ++i, tmp <<= 1)
                 {
                     grid_value[i] = this->data[grid[i].x][grid[i].y][grid[i].z];
+                    grid_gradient[i] = this->gradient[grid[i].x][grid[i].y][grid[i].z]; //
 
                     if(grid_value[i] < iso_value)
                         table_index |= tmp;
@@ -588,14 +673,19 @@ void Volume::calc_vertex(int iso_value)
                 int edge = edgeTable[table_index];
 
                 glm::vec3 vertex[12];
+                glm::vec3 vertex_gradient[12];
 
-                calc_intersection(vertex, grid, grid_value, edge, this->voxelsize, iso_value);
+                calc_intersection(vertex, vertex_gradient, grid, grid_value, grid_gradient, edge, this->voxelsize, iso_value);
 
                 for(int i = 0; triTable[table_index][i] != -1; i++)
                 {
                     this->vertex.push_back(vertex[triTable[table_index][i]][0]);
                     this->vertex.push_back(vertex[triTable[table_index][i]][1]);
                     this->vertex.push_back(vertex[triTable[table_index][i]][2]);
+
+                    this->vertex.push_back(vertex_gradient[triTable[table_index][i]][0]);
+                    this->vertex.push_back(vertex_gradient[triTable[table_index][i]][1]);
+                    this->vertex.push_back(vertex_gradient[triTable[table_index][i]][2]);
                 }
             }
         }
@@ -615,8 +705,11 @@ void Volume::setup_vao()
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, this->vertex.size() * sizeof(this->vertex[0]), this->vertex.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (GLvoid*)(0 * sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(0 * sizeof(float)));
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     this->vao.count = vertex.size() / 3;
 
@@ -627,7 +720,8 @@ void Volume::draw()
 {
     glBindVertexArray(vao.id);
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    // glPolygonMode(GL_BACK, GL_LINE);
 
     glDrawArrays(GL_TRIANGLES, 0, this->vao.count);
 

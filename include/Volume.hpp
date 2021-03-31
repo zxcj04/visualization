@@ -39,7 +39,7 @@ class Volume
         template<typename T>
         void read_data(string);
 
-        // void calc_gradient();
+        void calc_gradient();
 
         void calc_vertex(int);
 
@@ -47,7 +47,7 @@ class Volume
         void draw();
 
 
-    private:
+    // private:
         string inf_filename, raw_filename;
 
         glm::ivec3 resolution;

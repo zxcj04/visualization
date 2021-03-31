@@ -47,11 +47,13 @@ void Camera::use(Shader shader)
     // cout << yaw << " " << pitch << endl;
 
     shader.set_uniform("view", view);
+    shader.set_uniform("view_pos", this->position);
+    shader.set_uniform("light_pos", -this->position);
 }
 
 void Camera::zoom(float offset)
 {
-    static float sensitivity = 0.5f;
+    static float sensitivity = 1.0f;
 
     float ratio = zoom_value;
 
@@ -70,7 +72,7 @@ void Camera::zoom(float offset)
 
 void Camera::update_yaw(float offset)
 {
-    static float sensitivity = 0.1f;
+    static float sensitivity = 0.2f;
 
     yaw -= offset * sensitivity;
 

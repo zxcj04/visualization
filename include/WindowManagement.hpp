@@ -17,6 +17,10 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 #include "constants.hpp"
 #include "Shader.hpp"
 #include "Camera.hpp"
@@ -58,6 +62,8 @@ class WindowManagement
         void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
         void keyboard_down(int key);
 
+        void check_keyboard_pressing();
+
         void mouse_callback(GLFWwindow* window, int button, int action, int mods);
 
         void cursor_callback(GLFWwindow * window, double x, double y);
@@ -65,6 +71,8 @@ class WindowManagement
         void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
         void framebuffer_callback(GLFWwindow * w, int width, int height);
+
+        void imgui();
 
         void render_scene();
         void display();
@@ -80,7 +88,7 @@ class WindowManagement
         float last_x, last_y;
 
         map<string, METHODS> methods;
-        vector<string> scalar_filenames, vector_filenames, high_dim_filenames;
+        vector<string> scalar_infs, scalar_raws;
 
         /*-----Create image space for textures -----*/
         unsigned int   textName[5];
@@ -92,4 +100,6 @@ class WindowManagement
 
         unsigned int VBO, VAO;
         unsigned int VBO2, VAO2;
+
+        float clip_x, clip_y, clip_z, clip;
 };

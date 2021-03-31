@@ -53,6 +53,22 @@ bool WindowManagement::init(string window_name)
 
     this->window = glfwCreateWindow(width, height, window_name.c_str(), NULL, NULL);
 
+    GLFWmonitor* primary = glfwGetPrimaryMonitor();
+
+    const GLFWvidmode *mode = glfwGetVideoMode(primary);
+    if (!mode)
+        return 0;
+
+    int monitorX, monitorY;
+    glfwGetMonitorPos(primary, &monitorX, &monitorY);
+
+    int windowWidth, windowHeight;
+    glfwGetWindowSize(window, &windowWidth, &windowHeight);
+
+    glfwSetWindowPos(window,
+                     monitorX + (mode->width - windowWidth) / 2,
+                     monitorY + (mode->height - windowHeight) / 2);
+
     if(!this->window)
     {
         cout << "glfwCreateWindow ERROR" << endl;
@@ -70,6 +86,8 @@ bool WindowManagement::init(string window_name)
 
     glfwSwapInterval(1);
 
+    // glfwSetWindowAspectRatio(window, 1, 1);
+
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         cout << "Failed to initialize GLAD" << endl;
 
@@ -80,6 +98,13 @@ bool WindowManagement::init(string window_name)
 
     set_callback_functions();
 
+    // IMGUI
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(this->window, true);
+    ImGui_ImplOpenGL3_Init("#version 460");
+
     system_init();
 
     this->shader = Shader("./src/shaders/tri.vert", "./src/shaders/tri.frag");
@@ -87,6 +112,11 @@ bool WindowManagement::init(string window_name)
     cout << this->shader.ID << endl;
 
     this->camera = Camera();
+
+    this->clip_x = 50;
+    this->clip_y = 50;
+    this->clip_z = 50;
+    this->clip = 50;
 
     // -----------------------------------------
 
@@ -175,16 +205,17 @@ void WindowManagement::generate_combo()
         while((dirp = readdir(dp)) != NULL)
         {
             string temp = dirp->d_name;
-            size_t index = temp.find(".inf");
+            size_t index_inf = temp.find(".inf");
+            size_t index_raw = temp.find(".raw");
 
-            if(index != string::npos) this->scalar_filenames.push_back(temp.substr(0, index));
+            if(index_inf != string::npos) this->scalar_infs.push_back(temp.substr(0, index_inf));
+            if(index_raw != string::npos) this->scalar_raws.push_back(temp.substr(0, index_raw));
         }
     }
     closedir(dp);
 
-    sort(this->scalar_filenames.begin(), this->scalar_filenames.end());
-
-    this->test_volume = new Volume("./Data/Scalar/Body_CT.inf", "./Data/Scalar/Body_CT.raw");
+    sort(this->scalar_infs.begin(), this->scalar_infs.end());
+    sort(this->scalar_raws.begin(), this->scalar_raws.end());
 
     // for(auto it: this->scalar_filenames)
     // {
@@ -326,17 +357,25 @@ void WindowManagement::display()
 
 void WindowManagement::mainloop()
 {
+    this->test_volume = new Volume("./Data/Scalar/cthead.inf", "./Data/Scalar/cthead.raw");
+
     while (!glfwWindowShouldClose(this->window))
     {
         this->display();
+
+        this->check_keyboard_pressing();
+
+        imgui();
+
+        ImGui::Render();
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         /* Swap front and back buffers */
         glfwSwapBuffers(this->window);
 
         /* Poll for and process events */
         glfwPollEvents();
-
-        // break;
     }
 }
 
@@ -465,35 +504,126 @@ bool WindowManagement::texture_init()
 
 //-----------------------------------------
 
+void WindowManagement::imgui()
+{
+    static bool is_load = false;
+    static bool is_show = false;
+    static string selected_inf = "engine";
+    static string selected_raw = "engine";
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_Once);
+
+    ImGui::Begin("Is that a bird?");
+    {
+        ImGui::Text("File");
+
+        if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
+        {
+            for (size_t i = 0; i < scalar_infs.size(); i++)
+            {
+                if (ImGui::Selectable(scalar_infs[i].c_str()))
+                {
+                    selected_inf = scalar_infs[i];
+                    selected_raw = scalar_infs[i];
+                    is_load = false;
+                    is_show = false;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::BeginCombo(".raw", selected_raw.c_str()))
+        {
+            for (size_t i = 0; i < scalar_raws.size(); i++)
+            {
+                if (ImGui::Selectable(scalar_raws[i].c_str()))
+                {
+                    selected_raw = scalar_raws[i];
+                    is_load = false;
+                    is_show = false;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Load", ImVec2(100.0f, 30.0f)))
+        {
+            is_load = true;
+
+            cout << "Load" << endl;
+        }
+
+        // if (!is_show && is_load && ImGui::Button("Show"))
+        // {
+        //     is_show = true;
+        // }
+
+        // if (is_load && ImGui::Button("Clear"))
+        // {
+        //     is_load = false;
+        //     is_show = false;
+        // }
+    }
+    ImGui::End();
+
+    // this->test_volume = new Volume("./Data/Scalar/cthead.inf", "./Data/Scalar/cthead.raw");
+}
+
 
 
 void WindowManagement::render_scene()
 {
     this->shader.use();
 
-    glm::mat4 projection = glm::ortho(
-        this->camera.left   , this->camera.right,
-        this->camera.bottom , this->camera.top,
-        this->camera.near   , this->camera.far
-    );
+    glm::mat4 projection;
 
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-149 / 2, -208 / 2, -110 / 2));
+    if(width > height)
+    {
+        projection = glm::ortho(
+            this->camera.left                              , this->camera.right,
+            this->camera.bottom * ((float) height / width) , this->camera.top * ((float) height / width),
+            this->camera.near                              , this->camera.far
+        );
+    }
+    else
+    {
+        projection = glm::ortho(
+            this->camera.left * ((float) width /height)  , this->camera.right * ((float) width /height),
+            this->camera.bottom                          , this->camera.top,
+            this->camera.near                            , this->camera.far
+        );
+    }
 
+    shader.set_uniform("clip", glm::vec4(glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z)), clip));
     shader.set_uniform("projection", projection);
-    shader.set_uniform("model", model);
     camera.use(shader);
 
-    this->test_volume->draw();
+    glm::mat4 model = glm::mat4(1.0f);
+
+    if(true)
+    {
+        model = glm::translate(model, -glm::vec3(this->test_volume->resolution) / 2.0f * this->test_volume->voxelsize);
+        shader.set_uniform("model", model);
+
+        this->test_volume->draw();
+    }
 
     // -----------------------------------
     glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
     shader.set_uniform("projection", projection);
     // calculate the model matrix for each object and pass it to shader before drawing
     model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+    model = glm::scale(model, glm::vec3(2.5f, 2.5f, 2.5f));
     shader.set_uniform("model", model);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    // glDrawArrays(GL_TRIANGLES, 0, 36);
+
     glBindVertexArray(0);
 }
 
@@ -519,6 +649,82 @@ void WindowManagement::keyboard_down(int key)
     }
 }
 
+void WindowManagement::check_keyboard_pressing()
+{
+    if(ImGui::IsAnyMouseDown() && ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+        return;
+
+    if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+    {
+        this->clip_x += 0.02;
+    }
+    if (glfwGetKey(window, GLFW_KEY_KP_1) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    {
+        this->clip_x -= 0.02;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_KP_5) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+    {
+        this->clip_y += 0.02;
+    }
+    if (glfwGetKey(window, GLFW_KEY_KP_2) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+    {
+        this->clip_y -= 0.02;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_KP_6) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+    {
+        this->clip_z += 0.02;
+    }
+    if (glfwGetKey(window, GLFW_KEY_KP_3) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+    {
+        this->clip_z -= 0.02;
+    }
+
+
+    if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS)
+    {
+        this->clip++;
+    }
+    if (glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS)
+    {
+        this->clip--;
+    }
+
+    // if(clip_x > 100)
+    //     clip_x = 100;
+    // if(clip_x < 0)
+    //     clip_x = 0;
+
+    // if(clip_y > 100)
+    //     clip_y = 100;
+    // if(clip_y < 0)
+    //     clip_y = 0;
+
+    // if(clip_z > 100)
+    //     clip_z = 100;
+    // if(clip_z < 0)
+    //     clip_z = 0;
+
+    glm::vec3 tmp = glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z));
+
+    this->clip_x = tmp.x;
+    this->clip_y = tmp.y;
+    this->clip_z = tmp.z;
+
+    if(clip > 200)
+        clip = 200;
+    if(clip < -200)
+        clip = -200;
+}
 
 void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action, int mods)
 {
@@ -531,6 +737,8 @@ void WindowManagement::mouse_callback(GLFWwindow* window, int button, int action
 
 void WindowManagement::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
+    if(ImGui::IsAnyMouseDown() || ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+        return;
     // cout << xoffset << " " << yoffset << endl;
 
     this->camera.zoom(yoffset);
@@ -538,6 +746,9 @@ void WindowManagement::scroll_callback(GLFWwindow* window, double xoffset, doubl
 
 void WindowManagement::cursor_callback(GLFWwindow * window, double x, double y)
 {
+    if(ImGui::IsAnyMouseDown() || ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+        return;
+
     float x_offset = x - this->last_x;
     float y_offset = y - this->last_y;
 
@@ -553,6 +764,9 @@ void WindowManagement::cursor_callback(GLFWwindow * window, double x, double y)
 
 void WindowManagement::keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    if(ImGui::IsAnyMouseDown() || ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+        return;
+
     if(action == GLFW_PRESS)
         keyboard_down(key);
 }

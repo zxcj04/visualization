@@ -8,7 +8,7 @@ ifeq ($(findstring test, $(MAKECMDGOALS)), test)
 endif
 
 SOURCES += $(wildcard src/glad/*.c)
-# SOURCES += $(wildcard src/imgui/*.cpp)
+SOURCES += $(wildcard src/imgui/*.cpp)
 # SOURCES += $(wildcard src/implot/*.cpp)
 SOURCES += $(wildcard src/*.cpp)
 
