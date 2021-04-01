@@ -123,6 +123,8 @@ bool WindowManagement::init(string window_name)
 
     this->showing_last = false;
 
+    this->enable_section = false;
+
     // -----------------------------------------
 
     float vertices[] = {
@@ -645,6 +647,8 @@ void WindowManagement::imgui()
             this->clip_y = tmp.y;
             this->clip_z = tmp.z;
         }
+
+        ImGui::Checkbox("Section", &enable_section);
     }
     ImGui::End();
 }
@@ -677,6 +681,7 @@ void WindowManagement::render_scene()
     shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
     shader.set_uniform("projection", projection);
     shader.set_uniform("light_color", light_color);
+    shader.set_uniform("enable_section", enable_section);
     camera.use(shader);
 
     glm::mat4 model = glm::mat4(1.0f);

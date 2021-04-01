@@ -108,4 +108,6 @@ class WindowManagement
 
         // Volume *test_volume;
         vector<Volume> volumes;
+
+        bool enable_section;
 };

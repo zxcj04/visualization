@@ -9,11 +9,16 @@ in float clipped;
 uniform vec3 view_pos;
 uniform vec3 light_pos;
 uniform vec3 light_color;
+uniform bool enable_section;
 
 void main()
 {
-	if(clipped < 0.0)
+	if(enable_section && abs(clipped) > 0.5)
 	{
+        discard;
+    }
+    else if(!enable_section && clipped < 0.0)
+    {
         discard;
     }
 
