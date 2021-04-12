@@ -4,7 +4,6 @@ a.out
 main
 main.exe
 Data/
-*.pdf
 *.zip
 *.old
 imgui.ini
