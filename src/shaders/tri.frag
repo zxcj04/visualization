@@ -30,10 +30,8 @@ void main()
 
     vec3 norm = normalize(gradient);
 
-	vec3 view_d = normalize(view_pos);
-
     vec3 light_direction = normalize(light_pos - frag_pos);
-    vec3 view_direction = normalize(view_d * 250 - frag_pos);
+    vec3 view_direction = normalize(view_pos - frag_pos);
 
     if (dot(norm, -view_direction) < 0)
 	{

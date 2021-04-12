@@ -2,7 +2,7 @@
 
 Camera::Camera()
 {
-    this->zoom_value = 30.0f;
+    this->zoom_value = 200.0f;
 
     this->yaw        = 0.0f;
     this->pitch      = 0.0f;

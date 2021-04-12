@@ -678,20 +678,24 @@ void WindowManagement::render_scene()
         );
     }
 
+    // projection = glm::perspective(90.0f, (float) width / height, 0.1f, 10000.0f);
+
     shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
     shader.set_uniform("projection", projection);
     shader.set_uniform("light_color", light_color);
     shader.set_uniform("enable_section", enable_section);
     camera.use(shader);
 
-    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 model;
 
     for(int i = 0; i < this->volumes.size(); i++)
     {
         if(i == this->volumes.size() - 1 && !this->showing_last)
             continue;
 
-        model = glm::translate(glm::mat4(1.0f), -glm::vec3(this->volumes[i].resolution) / 2.0f * this->volumes[i].voxelsize);
+        model = glm::mat4(1.0f);
+
+        model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f * this->volumes[i].voxelsize);
         shader.set_uniform("model", model);
 
         this->volumes[i].draw();
