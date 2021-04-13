@@ -5,9 +5,11 @@
 #include <string>
 #include <fstream>
 #include <regex>
+#include <limits>
 
 #include "glad/glad.h"
 #include "glm/glm.hpp"
+#include "glm/gtx/norm.hpp"
 
 using namespace std;
 
@@ -43,6 +45,9 @@ class Volume
 
         void calc_vertex(int);
 
+        void calc_histogram();
+        void calc_mk_table();
+
         void setup_vao();
         void draw();
 
@@ -59,6 +64,13 @@ class Volume
 
         vector<vector<vector<float>>> data;
         vector<vector<vector<glm::vec3>>> gradient;
+        vector<float> histogram;
+        vector<vector<float> > mk_table;
+
+        float histogram_max_value;
+
+        int voxel_count;
+        float min_value, max_value;
 
         vector<float> vertex;
 

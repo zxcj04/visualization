@@ -21,6 +21,8 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include "implot/implot.h"
+
 #include "constants.hpp"
 #include "Shader.hpp"
 #include "Camera.hpp"

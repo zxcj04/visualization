@@ -306,7 +306,12 @@ Volume::Volume(string inf_filename, string raw_filename, int iso_value)
     this->valuetype  = TYPE::UNSIGNED_CHAR;
     this->endian     = ENDIAN::LITTLE;
 
+    this->min_value = numeric_limits<float>::max();
+    this->max_value = numeric_limits<float>::min();
+
     read_inf(this->inf_filename);
+
+    this->voxel_count = this->resolution.x * this->resolution.y * this->resolution.z;
 
     this->data.resize(this->resolution[0], vector<vector<float> >(this->resolution[1], vector<float>(this->resolution[2], 1)));
     this->gradient.resize(this->resolution[0], vector<vector<glm::vec3> >(this->resolution[1], vector<glm::vec3>(this->resolution[2], glm::vec3())));
@@ -335,6 +340,10 @@ Volume::Volume(string inf_filename, string raw_filename, int iso_value)
     calc_gradient();
 
     calc_vertex(iso_value);
+
+    calc_histogram();
+
+    calc_mk_table();
 
     setup_vao();
 }
@@ -487,11 +496,9 @@ void Volume::read_data(string raw_filename)
 {
     fstream raw;
     raw.open(raw_filename, ios::in | ios::binary);
+    char *buffer = new char[this->bytesize * this->voxel_count];
 
-    int max_count = this->resolution.x * this->resolution.y * this->resolution.z;
-    char *buffer = new char[this->bytesize * max_count];
-
-    raw.read(buffer, this->bytesize * max_count);
+    raw.read(buffer, this->bytesize * this->voxel_count);
     raw.close();
 
     ENDIAN endian = ENDIAN::LITTLE;
@@ -519,6 +526,11 @@ void Volume::read_data(string raw_filename)
                 memcpy(&raw_data, buffer + index, this->bytesize);
 
                 this->data[x][y][z] = (float) raw_data;
+
+                if(this->data[x][y][z] > this->max_value)
+                    max_value = (int) this->data[x][y][z];
+                else if(this->data[x][y][z] < this->min_value)
+                    min_value = (int) this->data[x][y][z];
             }
         }
     }
@@ -691,6 +703,73 @@ void Volume::calc_vertex(int iso_value)
         }
     }
 
+}
+
+void Volume::calc_histogram()
+{
+    cout << "min_value: " << this->min_value << " max_value: " << this->max_value << endl;
+
+    this->histogram.resize((int)(this->max_value - this->min_value) + 1, 0.0f);
+
+    float ratio = 255.0;
+    if (this->max_value - this->min_value >= 1e-6) ratio /= this->max_value - this->min_value;
+
+    for(int x = 0; x < this->resolution.x; x++)
+    {
+        for(int y = 0; y < this->resolution.y; y++)
+        {
+            for(int z = 0; z < this->resolution.z; z++)
+            {
+                histogram[(int)(this->data[x][y][z] - this->min_value) * ratio]++;
+            }
+        }
+    }
+
+    this->histogram_max_value = *max_element(this->histogram.begin(), this->histogram.end());
+}
+
+void Volume::calc_mk_table()
+{
+    this->mk_table.resize(256, vector<float>(160, 0.0f));
+
+    float value_range = this->max_value - this->min_value;
+    int max_mk_table = 0;
+    int m = 0, k = 0;
+
+    for(size_t x = 0; x < this->data.size(); x++)
+    {
+        for(size_t y = 0; y < this->data[0].size(); y++)
+        {
+            for(size_t z = 0; z < this->data[0][0].size(); z++)
+            {
+                m = ((this->data[x][y][z]-this->min_value)/value_range)*255;
+
+                float gradient_len = glm::length(this->gradient[x][y][z]);
+
+                gradient_len = glm::clamp(gradient_len, 1.0f, 256.0f);
+
+                k = 20 * log2(gradient_len);
+
+                if (m > 255)
+                    m = 255;
+                if (k > 159)
+                    k = 159;
+
+                mk_table[m][k] += 1.0f;
+
+                if(mk_table[m][k] > max_mk_table)
+                    max_mk_table = mk_table[m][k];
+            }
+        }
+    }
+
+    for(size_t m = 0; m < mk_table.size(); m++)
+    {
+        for(size_t k = 0; k < mk_table[0].size(); k++)
+        {
+            mk_table[m][k] = 20 * log2(mk_table[m][k]);
+        }
+    }
 }
 
 void Volume::setup_vao()

@@ -212,8 +212,8 @@ void WindowManagement::generate_combo()
         while((dirp = readdir(dp)) != NULL)
         {
             string temp = dirp->d_name;
-            size_t index_inf = temp.find(".inf");
-            size_t index_raw = temp.find(".raw");
+            int index_inf = temp.find(".inf");
+            int index_raw = temp.find(".raw");
 
             if(index_inf != string::npos) this->scalar_infs.push_back(temp.substr(0, index_inf));
             if(index_raw != string::npos) this->scalar_raws.push_back(temp.substr(0, index_raw));
@@ -544,7 +544,7 @@ void WindowManagement::imgui()
 
         if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
         {
-            for (size_t i = 0; i < scalar_infs.size(); i++)
+            for (int i = 0; i < scalar_infs.size(); i++)
             {
                 if (ImGui::Selectable(scalar_infs[i].c_str()))
                 {
@@ -560,7 +560,7 @@ void WindowManagement::imgui()
 
         if (ImGui::BeginCombo(".raw", selected_raw.c_str()))
         {
-            for (size_t i = 0; i < scalar_raws.size(); i++)
+            for (int i = 0; i < scalar_raws.size(); i++)
             {
                 if (ImGui::Selectable(scalar_raws[i].c_str()))
                 {
@@ -651,6 +651,81 @@ void WindowManagement::imgui()
         ImGui::Checkbox("Section", &enable_section);
     }
     ImGui::End();
+
+    if(this->volumes.size() > 0)
+    {
+        ImGui::SetNextWindowPos(ImVec2(this->width - 475, this->height - 425), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
+
+        ImGui::Begin("Histogram");
+        {
+            // ImGui::PlotLines("Frame Times", this->volumes.back().histogram.data(), IM_ARRAYSIZE(this->volumes.back().histogram.data()));
+            // const float g[5] = { 0.0f, 50.0f, 150.0f, 100.0f, 45.0f };
+            // ImVec2 size = ImGui::GetItemRectSize();
+            // ImGui::PlotHistogram(
+            //     "Test",
+            //     g,
+            //     IM_ARRAYSIZE(g),
+            //     0,
+            //     NULL,
+            //     0,
+            //     255,
+            //     size
+            // );
+
+            ImGui::PlotHistogram(
+                "voxel value",
+                this->volumes.back().histogram.data(),
+                this->volumes.back().histogram.size(),
+                0,
+                NULL,
+                0,
+                this->volumes.back().histogram_max_value,
+                ImVec2(350, 350)
+            );
+
+
+            // ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, this->volumes.back().histogram_max_value, ImGuiCond_Always);
+            // if (ImPlot::BeginPlot("My Plot", "", "", ImVec2(-1, 0))) {
+            //     ImPlot::PlotBars(
+            //         this->volumes.back().raw_filename.c_str(),
+            //         this->volumes.back().histogram.data(),
+            //         (int)(this->volumes.back().max_value - this->volumes.back().min_value)
+            //     );
+            //     ImPlot::EndPlot();
+            // }
+
+        }
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(25, this->height - 375), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(450, 350), ImGuiCond_Once);
+        ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, 160, ImGuiCond_Once);
+
+        ImGui::Begin("M-K Table");
+        {
+            if (ImPlot::BeginPlot("m-k table"))
+            {
+                for (int m = 0; m < this->volumes.back().mk_table.size(); m++)
+                {
+                    for(int k = 0; k < this->volumes.back().mk_table[0].size(); k++)
+                    {
+                        ImVec2 rect_start = ImPlot::PlotToPixels(ImPlotPoint(m, k+1));
+                        ImVec2 rect_end = ImPlot::PlotToPixels(ImPlotPoint(m+1, k));
+
+                        int value = glm::clamp((int)this->volumes.back().mk_table[m][k], 0, 255);
+
+                        ImPlot::PushPlotClipRect();
+                        ImGui::GetWindowDrawList()->AddRectFilled(rect_start, rect_end, IM_COL32(value, value, value, 255));
+                        ImPlot::PopPlotClipRect();
+                    }
+                }
+
+                ImPlot::EndPlot();
+            }
+        }
+        ImGui::End();
+    }
 }
 
 
