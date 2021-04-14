@@ -111,5 +111,7 @@ class WindowManagement
         // Volume *test_volume;
         vector<Volume> volumes;
 
+        glm::vec3 base_color;
+
         bool enable_section;
 };

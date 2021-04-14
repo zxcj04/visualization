@@ -125,6 +125,8 @@ bool WindowManagement::init(string window_name)
 
     this->enable_section = false;
 
+    this->base_color = glm::vec3(0.7, 0.5, 0.5);
+
     // -----------------------------------------
 
     float vertices[] = {
@@ -530,13 +532,14 @@ void WindowManagement::imgui()
     static string selected_inf = "engine";
     static string selected_raw = "engine";
     static int iso_value = 80;
+    static float g_max = 160.0f;
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(250, 325), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(250, 425), ImGuiCond_Once);
 
     ImGui::Begin("Is that a bird?");
     {
@@ -585,7 +588,7 @@ void WindowManagement::imgui()
             // if(this->test_volume != NULL)
             //     delete this->test_volume;
 
-            this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", iso_value));
+            this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", iso_value, pow(2, g_max / 20)));
 
             cout << "Load: " << this->volumes.back().vao.count << endl;
 
@@ -649,6 +652,12 @@ void WindowManagement::imgui()
         }
 
         ImGui::Checkbox("Section", &enable_section);
+
+        ImGui::Text("Base Color");
+
+        ImGui::SliderFloat("red", &base_color.x, 0.0f, 1.0f, "%.2f");
+        ImGui::SliderFloat("green", &base_color.y, 0.0f, 1.0f, "%.2f");
+        ImGui::SliderFloat("blue", &base_color.z, 0.0f, 1.0f, "%.2f");
     }
     ImGui::End();
 
@@ -698,12 +707,21 @@ void WindowManagement::imgui()
         }
         ImGui::End();
 
-        ImGui::SetNextWindowPos(ImVec2(25, this->height - 375), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(450, 350), ImGuiCond_Once);
-        ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, 160, ImGuiCond_Once);
+        ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
+        ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
 
         ImGui::Begin("M-K Table");
         {
+            ImGui::InputFloat("gMax", &g_max, 1.0f, 16.0f);
+
+            if(ImGui::Button("recalc mk table"))
+            {
+                this->volumes.back().calc_mk_table(pow(2, g_max / 20));
+
+                // ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
+            }
+
             if (ImPlot::BeginPlot("m-k table"))
             {
                 for (int m = 0; m < this->volumes.back().mk_table.size(); m++)
@@ -759,6 +777,7 @@ void WindowManagement::render_scene()
     shader.set_uniform("projection", projection);
     shader.set_uniform("light_color", light_color);
     shader.set_uniform("enable_section", enable_section);
+    shader.set_uniform("base_color", base_color);
     camera.use(shader);
 
     glm::mat4 model;

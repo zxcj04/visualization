@@ -33,7 +33,7 @@ class Volume
 {
     public:
 
-        Volume(string, string, int iso_value = 80);
+        Volume(string, string, int iso_value = 80, float g_max = 256.0f);
         ~Volume();
 
         void read_inf(string);
@@ -46,7 +46,7 @@ class Volume
         void calc_vertex(int);
 
         void calc_histogram();
-        void calc_mk_table();
+        void calc_mk_table(float g_max);
 
         void setup_vao();
         void draw();
@@ -71,6 +71,8 @@ class Volume
 
         int voxel_count;
         float min_value, max_value;
+
+        float max_gradient_len;
 
         vector<float> vertex;
 

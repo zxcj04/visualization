@@ -296,7 +296,7 @@ int triTable[256][16] = {
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 };
 
-Volume::Volume(string inf_filename, string raw_filename, int iso_value)
+Volume::Volume(string inf_filename, string raw_filename, int iso_value, float g_max)
 {
     this->inf_filename = inf_filename;
     this->raw_filename = raw_filename;
@@ -308,6 +308,8 @@ Volume::Volume(string inf_filename, string raw_filename, int iso_value)
 
     this->min_value = numeric_limits<float>::max();
     this->max_value = numeric_limits<float>::min();
+
+    this->max_gradient_len = numeric_limits<float>::min();
 
     read_inf(this->inf_filename);
 
@@ -343,7 +345,7 @@ Volume::Volume(string inf_filename, string raw_filename, int iso_value)
 
     calc_histogram();
 
-    calc_mk_table();
+    calc_mk_table(g_max);
 
     setup_vao();
 }
@@ -604,6 +606,8 @@ void Volume::calc_gradient()
                 // tmp.z /= this->voxelsize.z;
 
                 this->gradient[x][y][z] = tmp;
+
+                this->max_gradient_len = max(max_gradient_len, glm::length(tmp));
             }
         }
     }
@@ -709,10 +713,10 @@ void Volume::calc_histogram()
 {
     cout << "min_value: " << this->min_value << " max_value: " << this->max_value << endl;
 
-    this->histogram.resize((int)(this->max_value - this->min_value) + 1, 0.0f);
-
     float ratio = 255.0;
     if (this->max_value - this->min_value >= 1e-6) ratio /= this->max_value - this->min_value;
+
+    this->histogram.assign((int)(this->max_value - this->min_value) * ratio + 1, 0.0f);
 
     for(int x = 0; x < this->resolution.x; x++)
     {
@@ -728,11 +732,14 @@ void Volume::calc_histogram()
     this->histogram_max_value = *max_element(this->histogram.begin(), this->histogram.end());
 }
 
-void Volume::calc_mk_table()
+void Volume::calc_mk_table(float g_max)
 {
-    this->mk_table.resize(256, vector<float>(160, 0.0f));
+    g_max = this->max_gradient_len;
 
-    float value_range = this->max_value - this->min_value;
+    this->mk_table.assign(256, vector<float>(20 * log2(g_max), 0.0f));
+
+    // float value_range = this->max_value - this->min_value;
+    float ratio = 255 / (this->max_value - this->min_value);
     int max_mk_table = 0;
     int m = 0, k = 0;
 
@@ -742,18 +749,18 @@ void Volume::calc_mk_table()
         {
             for(size_t z = 0; z < this->data[0][0].size(); z++)
             {
-                m = ((this->data[x][y][z]-this->min_value)/value_range)*255;
+                m = (this->data[x][y][z]-this->min_value) * ratio;
 
                 float gradient_len = glm::length(this->gradient[x][y][z]);
 
-                gradient_len = glm::clamp(gradient_len, 1.0f, 256.0f);
-
                 k = 20 * log2(gradient_len);
 
-                if (m > 255)
-                    m = 255;
-                if (k > 159)
-                    k = 159;
+                k = glm::clamp(k, 0, (int) (20 * log2(g_max)) - 1);
+
+                // if (m > 255)
+                //     m = 255;
+                // if (k > 159)
+                //     k = 159;
 
                 mk_table[m][k] += 1.0f;
 
@@ -793,7 +800,7 @@ void Volume::setup_vao()
     this->vao.count = vertex.size() / 3;
 
     vertex.clear();
-    gradient.clear();
+    // gradient.clear();
 
     glBindVertexArray(0);
 }
