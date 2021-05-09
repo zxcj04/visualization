@@ -91,13 +91,14 @@ class WindowManagement
 
         float last_x, last_y;
 
-        map<string, METHODS> methods;
+        METHODS method;
         vector<string> scalar_infs, scalar_raws;
 
         /*-----Create image space for textures -----*/
         unsigned int   textName[5];
 
         Shader shader;
+        Shader shader_volume_rendering;
         Camera camera;
 
         bool showing_last;

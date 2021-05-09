@@ -11,6 +11,8 @@
 #include "glm/glm.hpp"
 #include "glm/gtx/norm.hpp"
 
+#include "constants.hpp"
+
 using namespace std;
 
 enum TYPE
@@ -33,7 +35,7 @@ class Volume
 {
     public:
 
-        Volume(string, string, int iso_value = 80, float g_max = 256.0f);
+        Volume(string, string, METHODS, int iso_value = 80, float g_max = 256.0f);
         ~Volume();
 
         void read_inf(string);
@@ -45,8 +47,15 @@ class Volume
 
         void calc_vertex(int);
 
+        void calc_3dtexture();
+        void calc_1dtexture();
+
         void calc_histogram();
         void calc_mk_table(float g_max);
+
+        void load_texture3d();
+
+        void setup_volume_vao();
 
         void setup_vao();
         void draw();
@@ -77,4 +86,15 @@ class Volume
         vector<float> vertex;
 
         VAO vao;
+
+        METHODS method;
+
+        // vector<unsigned char[4]> texture_data_3d;
+        // vector<unsigned char[4]> texture_data_1d;
+
+        unsigned char (*texture_data_3d)[4];
+        unsigned char (*texture_data_1d)[4];
+
+        unsigned int texture_3d;
+        unsigned int texture_1d;
 };

@@ -108,8 +108,10 @@ bool WindowManagement::init(string window_name)
     system_init();
 
     this->shader = Shader("./src/shaders/tri.vert", "./src/shaders/tri.frag");
+    this->shader_volume_rendering = Shader("./src/shaders/volume_rendering.vert", "./src/shaders/volume_rendering.frag");
 
     cout << this->shader.ID << endl;
+    cout << this->shader_volume_rendering.ID << endl;
 
     this->camera = Camera();
 
@@ -203,7 +205,7 @@ bool WindowManagement::init(string window_name)
 void WindowManagement::generate_combo()
 {
     // generate methods combo
-    this->methods["Iso Surface"] = METHODS::ISO_SURFACE;
+    this->method = METHODS::ISO_SURFACE;
 
     // generate filenames combo
     DIR *dp;
@@ -534,12 +536,18 @@ void WindowManagement::imgui()
     static int iso_value = 80;
     static float g_max = 160.0f;
 
+    static vector<string> selectable_methods = {
+        "iso surface",
+        "volume rendering",
+    };
+    static string selected_method = "iso surface";
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(250, 425), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(250, 450), ImGuiCond_Once);
 
     ImGui::Begin("Is that a bird?");
     {
@@ -576,7 +584,28 @@ void WindowManagement::imgui()
             ImGui::EndCombo();
         }
 
-        ImGui::InputInt("Iso Value", &iso_value);
+        if(ImGui::BeginCombo("Method", selected_method.c_str()))
+        {
+            for(int i = 0; i < selectable_methods.size(); i++)
+            {
+                if(ImGui::Selectable(selectable_methods[i].c_str()))
+                {
+                    selected_method = selectable_methods[i];
+
+                    if(i == METHODS::ISO_SURFACE)
+                        this->method = METHODS::ISO_SURFACE;
+                    else if(i == METHODS::VOLUME_RENDERING)
+                        this->method = METHODS::VOLUME_RENDERING;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if(this->method == METHODS::ISO_SURFACE)
+        {
+            ImGui::InputInt("Iso Value", &iso_value);
+        }
 
         if (ImGui::Button("Load", ImVec2(100.0f, 30.0f)))
         {
@@ -588,7 +617,7 @@ void WindowManagement::imgui()
             // if(this->test_volume != NULL)
             //     delete this->test_volume;
 
-            this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", iso_value, pow(2, g_max / 20)));
+            this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", this->method, iso_value, pow(2, g_max / 20)));
 
             cout << "Load: " << this->volumes.back().vao.count << endl;
 
@@ -750,8 +779,6 @@ void WindowManagement::imgui()
 
 void WindowManagement::render_scene()
 {
-    this->shader.use();
-
     glm::mat4 projection;
 
     if(width > height)
@@ -773,24 +800,50 @@ void WindowManagement::render_scene()
 
     // projection = glm::perspective(90.0f, (float) width / height, 0.1f, 10000.0f);
 
-    shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
-    shader.set_uniform("projection", projection);
-    shader.set_uniform("light_color", light_color);
-    shader.set_uniform("enable_section", enable_section);
-    shader.set_uniform("base_color", base_color);
-    camera.use(shader);
-
     glm::mat4 model;
 
     for(int i = 0; i < this->volumes.size(); i++)
     {
+        if(this->volumes[i].method == METHODS::ISO_SURFACE)
+        {
+            this->shader.use();
+
+            shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
+            shader.set_uniform("projection", projection);
+            shader.set_uniform("light_color", light_color);
+            shader.set_uniform("enable_section", enable_section);
+            shader.set_uniform("base_color", base_color);
+            camera.use(shader);
+        }
+        else if(this->volumes[i].method == METHODS::VOLUME_RENDERING)
+        {
+            this->shader_volume_rendering.use();
+
+            shader_volume_rendering.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
+            shader_volume_rendering.set_uniform("projection", projection);
+            shader_volume_rendering.set_uniform("light_color", light_color);
+            shader_volume_rendering.set_uniform("enable_section", enable_section);
+            shader_volume_rendering.set_uniform("base_color", base_color);
+            shader_volume_rendering.set_uniform("using_texture1", 1);
+            camera.use(shader_volume_rendering);
+        }
+
         if(i == this->volumes.size() - 1 && !this->showing_last)
             continue;
 
         model = glm::mat4(1.0f);
 
-        model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f * this->volumes[i].voxelsize);
-        shader.set_uniform("model", model);
+        if(this->volumes[i].method == METHODS::ISO_SURFACE)
+        {
+            model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f * this->volumes[i].voxelsize);
+            shader.set_uniform("model", model);
+        }
+        else if(this->volumes[i].method == METHODS::VOLUME_RENDERING)
+        {
+            model = glm::scale(model, this->volumes[i].voxelsize);
+            model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f);
+            shader_volume_rendering.set_uniform("model", model);
+        }
 
         this->volumes[i].draw();
     }
@@ -815,6 +868,7 @@ void WindowManagement::keyboard_down(int key)
 
         case GLFW_KEY_R:
             this->shader.reload();
+            this->shader_volume_rendering.reload();
 
             break;
     }

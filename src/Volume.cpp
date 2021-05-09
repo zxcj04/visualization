@@ -296,10 +296,12 @@ int triTable[256][16] = {
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 };
 
-Volume::Volume(string inf_filename, string raw_filename, int iso_value, float g_max)
+Volume::Volume(string inf_filename, string raw_filename, METHODS method, int iso_value, float g_max)
 {
     this->inf_filename = inf_filename;
     this->raw_filename = raw_filename;
+
+    this->method = method;
 
     this->resolution = glm::ivec3(0, 0, 0);
     this->voxelsize  = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -315,8 +317,8 @@ Volume::Volume(string inf_filename, string raw_filename, int iso_value, float g_
 
     this->voxel_count = this->resolution.x * this->resolution.y * this->resolution.z;
 
-    this->data.resize(this->resolution[0], vector<vector<float> >(this->resolution[1], vector<float>(this->resolution[2], 1)));
-    this->gradient.resize(this->resolution[0], vector<vector<glm::vec3> >(this->resolution[1], vector<glm::vec3>(this->resolution[2], glm::vec3())));
+    this->data.assign(this->resolution[0], vector<vector<float> >(this->resolution[1], vector<float>(this->resolution[2], 1)));
+    this->gradient.assign(this->resolution[0], vector<vector<glm::vec3> >(this->resolution[1], vector<glm::vec3>(this->resolution[2], glm::vec3())));
 
     if(this->valuetype == TYPE::UNSIGNED_CHAR)
         read_data<unsigned char>(this->raw_filename);
@@ -341,13 +343,25 @@ Volume::Volume(string inf_filename, string raw_filename, int iso_value, float g_
 
     calc_gradient();
 
-    calc_vertex(iso_value);
+    if(this->method == METHODS::ISO_SURFACE)
+    {
+        calc_vertex(iso_value);
+
+        setup_vao();
+    }
+    else if(this->method == METHODS::VOLUME_RENDERING)
+    {
+        calc_3dtexture();
+        calc_1dtexture();
+
+        load_texture3d();
+
+        setup_volume_vao();
+    }
 
     calc_histogram();
 
     calc_mk_table(g_max);
-
-    setup_vao();
 }
 
 Volume::~Volume()
@@ -709,6 +723,56 @@ void Volume::calc_vertex(int iso_value)
 
 }
 
+void Volume::calc_3dtexture()
+{
+    this->texture_data_3d = new unsigned char[this->resolution.x * this->resolution.y * this->resolution.z][4];
+
+    for(int x = 0; x < this->resolution.x; x++)
+    for(int y = 0; y < this->resolution.y; y++)
+    for(int z = 0; z < this->resolution.z; z++)
+    {
+        glm::vec3 tmp = this->gradient[x][y][z];
+
+        // this->texture_data_3d.push_back(data);
+
+        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][0] = (tmp.r + 1) / 2 * 255;
+        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][1] = (tmp.g + 1) / 2 * 255;
+        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][2] = (tmp.b + 1) / 2 * 255;
+
+        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][3] = (this->data[x][y][z] - this->min_value) / (this->max_value - this->min_value) * 255;
+    }
+}
+
+void Volume::load_texture3d()
+{
+    glGenTextures(1, &texture_3d);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_3D, texture_3d);
+    glTexImage3D(
+        GL_TEXTURE_3D,
+        0,
+        GL_RGBA,
+        this->resolution.x,
+        this->resolution.y,
+        this->resolution.z,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        this->texture_data_3d
+    );
+    // set texture options
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+void Volume::calc_1dtexture()
+{
+
+}
+
 void Volume::calc_histogram()
 {
     cout << "min_value: " << this->min_value << " max_value: " << this->max_value << endl;
@@ -779,6 +843,73 @@ void Volume::calc_mk_table(float g_max)
     }
 }
 
+void Volume::setup_volume_vao()
+{
+    float x = this->resolution.x;
+    float y = this->resolution.y;
+    float z = this->resolution.z;
+
+        // // a
+        // 0, 0, 0,
+        // // b
+        // x, 0, 0,
+        // // c
+        // x, 0, z,
+        // // d
+        // 0, 0, z,
+
+        // // e
+        // 0, y, 0,
+        // // f
+        // x, y, 0,
+        // // g
+        // x, y, z,
+        // // h
+        // 0, y, z,
+
+    vector<float> volume_vertex = {
+        // coord: x y z, texCoord: x, y, z
+        0, 0, 0,   0, 0, 0,        0, 0, z,   0, 0, 1,        x, 0, z,   1, 0, 1,
+        0, 0, 0,   0, 0, 0,        x, 0, z,   1, 0, 1,        x, 0, 0,   1, 0, 0,
+
+        0, y, 0,   0, 1, 0,        x, y, 0,   1, 1, 0,        x, y, z,   1, 1, 1,
+        0, y, 0,   0, 1, 0,        x, y, z,   1, 1, 1,        0, y, z,   0, 1, 1,
+
+        0, 0, 0,   0, 0, 0,        x, 0, 0,   1, 0, 0,        x, y, 0,   1, 1, 0,
+        0, 0, 0,   0, 0, 0,        x, y, 0,   1, 1, 0,        0, y, 0,   0, 1, 0,
+
+        x, 0, 0,   1, 0, 0,        x, 0, z,   1, 0, 1,        x, y, z,   1, 1, 1,
+        x, 0, 0,   1, 0, 0,        x, y, z,   1, 1, 1,        x, y, 0,   1, 1, 0,
+
+        x, 0, z,   1, 0, 1,        0, 0, z,   0, 0, 1,        0, y, z,   0, 1, 1,
+        x, 0, z,   1, 0, 1,        0, y, z,   0, 1, 1,        x, y, z,   1, 1, 1,
+
+        0, 0, 0,   0, 0, 0,        0, y, 0,   0, 1, 0,        0, y, z,   0, 1, 1,
+        0, 0, 0,   0, 0, 0,        0, y, z,   0, 1, 1,        0, 0, z,   0, 0, 1,
+    };
+
+    GLuint vbo;
+
+    glGenVertexArrays(1, &(this->vao.id));
+    glGenBuffers(1, &(vbo));
+
+    glBindVertexArray(this->vao.id);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, volume_vertex.size() * sizeof(float), volume_vertex.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(0 * sizeof(float)));
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    this->vao.count = volume_vertex.size() / 6;
+
+    volume_vertex.clear();
+
+    glBindVertexArray(0);
+}
+
 void Volume::setup_vao()
 {
     GLuint vbo;
@@ -807,6 +938,20 @@ void Volume::setup_vao()
 
 void Volume::draw()
 {
+    if(this->method == METHODS::ISO_SURFACE)
+    {
+        glDisable(GL_CULL_FACE);
+    }
+    else if(this->method == METHODS::VOLUME_RENDERING)
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_3D, this->texture_3d);
+
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glFrontFace(GL_CW);
+    }
+
     glBindVertexArray(vao.id);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
