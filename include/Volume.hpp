@@ -54,6 +54,7 @@ class Volume
         void calc_mk_table(float g_max);
 
         void load_texture3d();
+        void load_texture1d();
 
         void setup_volume_vao();
 

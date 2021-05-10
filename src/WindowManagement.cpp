@@ -551,6 +551,8 @@ void WindowManagement::imgui()
 
     ImGui::Begin("Is that a bird?");
     {
+        ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
         ImGui::Text("File");
 
         if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
@@ -825,6 +827,8 @@ void WindowManagement::render_scene()
             shader_volume_rendering.set_uniform("enable_section", enable_section);
             shader_volume_rendering.set_uniform("base_color", base_color);
             shader_volume_rendering.set_uniform("using_texture1", 1);
+            shader_volume_rendering.set_uniform("using_texture2", 2);
+            shader_volume_rendering.set_uniform("resolution", this->volumes[i].resolution);
             camera.use(shader_volume_rendering);
         }
 

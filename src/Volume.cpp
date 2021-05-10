@@ -355,6 +355,7 @@ Volume::Volume(string inf_filename, string raw_filename, METHODS method, int iso
         calc_1dtexture();
 
         load_texture3d();
+        load_texture1d();
 
         setup_volume_vao();
     }
@@ -770,7 +771,38 @@ void Volume::load_texture3d()
 
 void Volume::calc_1dtexture()
 {
+    int range = this->max_value - this->min_value;
+    this->texture_data_1d = new unsigned char[range][4];
 
+    for(int i = 0; i < range ; i++)
+    {
+        this->texture_data_1d[i][0] = 255;
+        this->texture_data_1d[i][1] = 0;
+        this->texture_data_1d[i][2] = 0;
+
+        this->texture_data_1d[i][3] = 0.005 * 255;
+    }
+}
+
+void Volume::load_texture1d()
+{
+    glGenTextures(1, &texture_1d);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_1D, texture_1d);
+    glTexImage1D(
+        GL_TEXTURE_1D,
+        0,
+        GL_RGBA,
+        this->max_value - this->min_value,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        this->texture_data_1d
+    );
+    // set texture options
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
 void Volume::calc_histogram()
@@ -946,6 +978,8 @@ void Volume::draw()
     {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_3D, this->texture_3d);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_1D, this->texture_1d);
 
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);

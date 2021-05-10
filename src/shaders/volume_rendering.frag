@@ -3,6 +3,7 @@
 out vec4 FragColor;
 
 in vec3 frag_pos;
+in vec3 ori_pos;
 in vec3 tex_coord;
 
 uniform vec3 view_pos;
@@ -10,14 +11,49 @@ uniform vec3 light_pos;
 uniform vec3 light_color;
 uniform bool enable_section;
 uniform vec3 base_color;
+uniform vec3 resolution;
 
 uniform sampler3D using_texture1;
+uniform sampler1D using_texture2;
+
+bool inside(vec3 pos)
+{
+    if((pos.x >= 0 && pos.x <= resolution.x) &&
+       (pos.y >= 0 && pos.y <= resolution.y) &&
+       (pos.z >= 0 && pos.z <= resolution.z))
+        return true;
+    else
+        return false;
+}
 
 void main()
 {
-    vec4 texture_color = texture(using_texture1, tex_coord);
+    FragColor = vec4(0.0, 0.0, 0.0, 0.0);
 
-    FragColor = texture_color;
+    vec3 now_pos = ori_pos;
+    float now_decay = 0.0;
+
+    while(now_decay < 1 && inside( now_pos ))
+    {
+        vec3 sample_point_tex_coord = now_pos / resolution;
+
+        vec4 sample_point_3d_tex = texture(using_texture1, sample_point_tex_coord);
+
+        vec4 sample_point_tex_color = texture(using_texture2, sample_point_3d_tex.a);
+
+        now_pos += -view_pos * 0.00625;
+        now_decay += sample_point_tex_color.a;
+
+        if((sample_point_tex_coord.x < 0 || sample_point_tex_coord.x > 1) ||
+           (sample_point_tex_coord.y < 0 || sample_point_tex_coord.y > 1) ||
+           (sample_point_tex_coord.z < 0 || sample_point_tex_coord.z > 1))
+        {
+            continue;
+        }
+
+        FragColor += sample_point_tex_color;
+    }
+
     return;
 
 	// vec3 base_color = vec3(0.7, 0.5, 0.5);
