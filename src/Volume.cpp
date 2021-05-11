@@ -771,16 +771,15 @@ void Volume::load_texture3d()
 
 void Volume::calc_1dtexture()
 {
-    int range = this->max_value - this->min_value;
-    this->texture_data_1d = new unsigned char[range][4];
+    this->texture_data_1d = new unsigned char[256][4];
 
-    for(int i = 0; i < range ; i++)
+    for(int i = 0; i < 256 ; i++)
     {
         this->texture_data_1d[i][0] = i;
         this->texture_data_1d[i][1] = 0;
         this->texture_data_1d[i][2] = 0;
 
-        if(i < 128 || i > 250)
+        if(i < 80 || i > 200)
             this->texture_data_1d[i][3] = 0 * 255;
         else
             this->texture_data_1d[i][3] = 0.05 * 255;
@@ -796,7 +795,7 @@ void Volume::load_texture1d()
         GL_TEXTURE_1D,
         0,
         GL_RGBA,
-        this->max_value - this->min_value,
+        256,
         0,
         GL_RGBA,
         GL_UNSIGNED_BYTE,
@@ -806,6 +805,47 @@ void Volume::load_texture1d()
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+unsigned int retrieve_polyline_value(ImVector<ImVec2> polyline, int x)
+{
+    x *= 2;
+
+    if(polyline.size() == 0)
+        return 0;
+
+    ImVec2 *target;
+
+    for(target = polyline.begin(); target != polyline.end(); ++target)
+        if(target->x > x)
+            break;
+        else if(target->x == x)
+            return target->y;
+
+    if(target == polyline.end())
+        return 0;
+    else if(target == polyline.begin() && target->x > x)
+        return 0;
+
+    float alpha = x - (target - 1)->x;
+    float beta = target->x - x;
+
+    return 255 - (((target - 1)->y * beta) + (target->y * alpha)) / (alpha + beta);
+}
+
+void Volume::reload_1d_texture(vector<ImVector<ImVec2>> rgba_polylines)
+{
+    for(int i = 0; i < 256 ; i++)
+    {
+        this->texture_data_1d[i][0] = retrieve_polyline_value(rgba_polylines[0], i);
+        this->texture_data_1d[i][1] = retrieve_polyline_value(rgba_polylines[1], i);
+        this->texture_data_1d[i][2] = retrieve_polyline_value(rgba_polylines[2], i);
+        this->texture_data_1d[i][3] = (retrieve_polyline_value(rgba_polylines[3], i)) / 16;
+    }
+
+    glDeleteTextures(1, &this->texture_1d);
+
+    load_texture1d();
 }
 
 void Volume::calc_histogram()
@@ -985,8 +1025,8 @@ void Volume::draw()
         glBindTexture(GL_TEXTURE_1D, this->texture_1d);
 
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glFrontFace(GL_CW);
+        glCullFace(GL_FRONT);
+        glFrontFace(GL_CCW);
     }
 
     glBindVertexArray(vao.id);

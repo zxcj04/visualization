@@ -116,5 +116,5 @@ class WindowManagement
 
         bool enable_section;
 
-        vector<ImVector<ImVec2>> rgb_polylines;
+        vector<ImVector<ImVec2>> rgba_polylines;
 };

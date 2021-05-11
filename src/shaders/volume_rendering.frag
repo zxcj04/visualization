@@ -12,6 +12,7 @@ uniform vec3 light_color;
 uniform bool enable_section;
 uniform vec3 base_color;
 uniform vec3 resolution;
+uniform vec3 voxelsize;
 
 uniform sampler3D using_texture1;
 uniform sampler1D using_texture2;
@@ -41,11 +42,7 @@ void main()
 
         vec4 sample_point_tex_color = texture(using_texture2, sample_point_3d_tex.a);
 
-        if(length(sample_point_3d_tex.rgb) < 0.9)
-            sample_point_tex_color.a *= 0.25;
-
-        now_pos += normalize(-view_pos) * 5;
-        now_decay += sample_point_tex_color.a;
+        now_pos += normalize(-view_pos / voxelsize) * 1;
 
         if((sample_point_tex_coord.x < 0 || sample_point_tex_coord.x > 1) ||
            (sample_point_tex_coord.y < 0 || sample_point_tex_coord.y > 1) ||
@@ -53,6 +50,8 @@ void main()
         {
             continue;
         }
+
+        now_decay += sample_point_tex_color.a;
 
         FragColor += sample_point_tex_color;
     }

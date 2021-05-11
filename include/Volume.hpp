@@ -11,6 +11,8 @@
 #include "glm/glm.hpp"
 #include "glm/gtx/norm.hpp"
 
+#include "imgui/imgui.h"
+
 #include "constants.hpp"
 
 using namespace std;
@@ -55,6 +57,8 @@ class Volume
 
         void load_texture3d();
         void load_texture1d();
+
+        void reload_1d_texture(vector<ImVector<ImVec2>>);
 
         void setup_volume_vao();
 
