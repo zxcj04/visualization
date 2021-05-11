@@ -41,7 +41,10 @@ void main()
 
         vec4 sample_point_tex_color = texture(using_texture2, sample_point_3d_tex.a);
 
-        now_pos += -view_pos * 0.00625;
+        if(length(sample_point_3d_tex.rgb) < 0.9)
+            sample_point_tex_color.a *= 0.25;
+
+        now_pos += normalize(-view_pos) * 5;
         now_decay += sample_point_tex_color.a;
 
         if((sample_point_tex_coord.x < 0 || sample_point_tex_coord.x > 1) ||

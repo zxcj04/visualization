@@ -115,4 +115,6 @@ class WindowManagement
         glm::vec3 base_color;
 
         bool enable_section;
+
+        vector<ImVector<ImVec2>> rgb_polylines;
 };

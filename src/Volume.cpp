@@ -732,15 +732,15 @@ void Volume::calc_3dtexture()
     for(int y = 0; y < this->resolution.y; y++)
     for(int z = 0; z < this->resolution.z; z++)
     {
-        glm::vec3 tmp = this->gradient[x][y][z];
+        glm::vec3 tmp = glm::normalize(this->gradient[x][y][z]);
 
         // this->texture_data_3d.push_back(data);
 
-        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][0] = (tmp.r + 1) / 2 * 255;
-        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][1] = (tmp.g + 1) / 2 * 255;
-        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][2] = (tmp.b + 1) / 2 * 255;
+        this->texture_data_3d[z * this->resolution.y * this->resolution.x + y * this->resolution.x + x][0] = (tmp.r + 1) / 2 * 255;
+        this->texture_data_3d[z * this->resolution.y * this->resolution.x + y * this->resolution.x + x][1] = (tmp.g + 1) / 2 * 255;
+        this->texture_data_3d[z * this->resolution.y * this->resolution.x + y * this->resolution.x + x][2] = (tmp.b + 1) / 2 * 255;
 
-        this->texture_data_3d[x * this->resolution.y * this->resolution.z + y * this->resolution.z + z][3] = (this->data[x][y][z] - this->min_value) / (this->max_value - this->min_value) * 255;
+        this->texture_data_3d[z * this->resolution.y * this->resolution.x + y * this->resolution.x + x][3] = (this->data[x][y][z] - this->min_value) / (this->max_value - this->min_value) * 255;
     }
 }
 
@@ -776,11 +776,14 @@ void Volume::calc_1dtexture()
 
     for(int i = 0; i < range ; i++)
     {
-        this->texture_data_1d[i][0] = 255;
+        this->texture_data_1d[i][0] = i;
         this->texture_data_1d[i][1] = 0;
         this->texture_data_1d[i][2] = 0;
 
-        this->texture_data_1d[i][3] = 0.005 * 255;
+        if(i < 128 || i > 250)
+            this->texture_data_1d[i][3] = 0 * 255;
+        else
+            this->texture_data_1d[i][3] = 0.05 * 255;
     }
 }
 
@@ -988,7 +991,7 @@ void Volume::draw()
 
     glBindVertexArray(vao.id);
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     // glPolygonMode(GL_BACK, GL_LINE);
 
     glDrawArrays(GL_TRIANGLES, 0, this->vao.count);

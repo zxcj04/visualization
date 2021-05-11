@@ -129,6 +129,8 @@ bool WindowManagement::init(string window_name)
 
     this->base_color = glm::vec3(0.7, 0.5, 0.5);
 
+    this->rgb_polylines.assign(4, ImVector<ImVec2>());
+
     // -----------------------------------------
 
     float vertices[] = {
@@ -697,82 +699,211 @@ void WindowManagement::imgui()
         ImGui::SetNextWindowPos(ImVec2(this->width - 475, this->height - 425), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
 
-        ImGui::Begin("Histogram");
-        {
-            // ImGui::PlotLines("Frame Times", this->volumes.back().histogram.data(), IM_ARRAYSIZE(this->volumes.back().histogram.data()));
-            // const float g[5] = { 0.0f, 50.0f, 150.0f, 100.0f, 45.0f };
-            // ImVec2 size = ImGui::GetItemRectSize();
-            // ImGui::PlotHistogram(
-            //     "Test",
-            //     g,
-            //     IM_ARRAYSIZE(g),
-            //     0,
-            //     NULL,
-            //     0,
-            //     255,
-            //     size
-            // );
+        static bool switch_histogram = true;
 
-            ImGui::PlotHistogram(
-                "voxel value",
-                this->volumes.back().histogram.data(),
-                this->volumes.back().histogram.size(),
-                0,
-                NULL,
-                0,
-                this->volumes.back().histogram_max_value,
-                ImVec2(350, 350)
-            );
-
-
-            // ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, this->volumes.back().histogram_max_value, ImGuiCond_Always);
-            // if (ImPlot::BeginPlot("My Plot", "", "", ImVec2(-1, 0))) {
-            //     ImPlot::PlotBars(
-            //         this->volumes.back().raw_filename.c_str(),
-            //         this->volumes.back().histogram.data(),
-            //         (int)(this->volumes.back().max_value - this->volumes.back().min_value)
-            //     );
-            //     ImPlot::EndPlot();
-            // }
-
-        }
-        ImGui::End();
-
-        ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
-        ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
-
-        ImGui::Begin("M-K Table");
-        {
-            ImGui::InputFloat("gMax", &g_max, 1.0f, 16.0f);
-
-            if(ImGui::Button("recalc mk table"))
+        if(switch_histogram) {
+            ImGui::Begin("Histogram", &switch_histogram);
             {
-                this->volumes.back().calc_mk_table(pow(2, g_max / 20));
 
-                // ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
+                // ImGui::PlotLines("Frame Times", this->volumes.back().histogram.data(), IM_ARRAYSIZE(this->volumes.back().histogram.data()));
+                // const float g[5] = { 0.0f, 50.0f, 150.0f, 100.0f, 45.0f };
+                // ImVec2 size = ImGui::GetItemRectSize();
+                // ImGui::PlotHistogram(
+                //     "Test",
+                //     g,
+                //     IM_ARRAYSIZE(g),
+                //     0,
+                //     NULL,
+                //     0,
+                //     255,
+                //     size
+                // );
+
+                ImGui::PlotHistogram(
+                    "voxel value",
+                    this->volumes.back().histogram.data(),
+                    this->volumes.back().histogram.size(),
+                    0,
+                    NULL,
+                    0,
+                    this->volumes.back().histogram_max_value,
+                    ImVec2(350, 350)
+                );
+
+
+                // ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, this->volumes.back().histogram_max_value, ImGuiCond_Always);
+                // if (ImPlot::BeginPlot("My Plot", "", "", ImVec2(-1, 0))) {
+                //     ImPlot::PlotBars(
+                //         this->volumes.back().raw_filename.c_str(),
+                //         this->volumes.back().histogram.data(),
+                //         (int)(this->volumes.back().max_value - this->volumes.back().min_value)
+                //     );
+                //     ImPlot::EndPlot();
+                // }
+
             }
+            ImGui::End();
+        }
 
-            if (ImPlot::BeginPlot("m-k table"))
+        static bool switch_mk_table = true;
+
+        if(switch_mk_table) {
+
+            ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
+            ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
+            ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
+
+            ImGui::Begin("M-K Table", &switch_mk_table);
             {
-                for (int m = 0; m < this->volumes.back().mk_table.size(); m++)
+                ImGui::InputFloat("gMax", &g_max, 1.0f, 16.0f);
+
+                if(ImGui::Button("recalc mk table"))
                 {
-                    for(int k = 0; k < this->volumes.back().mk_table[0].size(); k++)
-                    {
-                        ImVec2 rect_start = ImPlot::PlotToPixels(ImPlotPoint(m, k+1));
-                        ImVec2 rect_end = ImPlot::PlotToPixels(ImPlotPoint(m+1, k));
+                    this->volumes.back().calc_mk_table(pow(2, g_max / 20));
 
-                        int value = glm::clamp((int)this->volumes.back().mk_table[m][k], 0, 255);
-
-                        ImPlot::PushPlotClipRect();
-                        ImGui::GetWindowDrawList()->AddRectFilled(rect_start, rect_end, IM_COL32(value, value, value, 255));
-                        ImPlot::PopPlotClipRect();
-                    }
+                    // ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
                 }
 
-                ImPlot::EndPlot();
+                if (ImPlot::BeginPlot("m-k table"))
+                {
+                    for (int m = 0; m < this->volumes.back().mk_table.size(); m++)
+                    {
+                        for(int k = 0; k < this->volumes.back().mk_table[0].size(); k++)
+                        {
+                            ImVec2 rect_start = ImPlot::PlotToPixels(ImPlotPoint(m, k+1));
+                            ImVec2 rect_end = ImPlot::PlotToPixels(ImPlotPoint(m+1, k));
+
+                            int value = glm::clamp((int)this->volumes.back().mk_table[m][k], 0, 255);
+
+                            ImPlot::PushPlotClipRect();
+                            ImGui::GetWindowDrawList()->AddRectFilled(rect_start, rect_end, IM_COL32(value, value, value, 255));
+                            ImPlot::PopPlotClipRect();
+                        }
+                    }
+
+                    ImPlot::EndPlot();
+                }
             }
+            ImGui::End();
         }
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(550, 400), ImGuiCond_Once);
+
+    ImGui::Begin("Canvas");
+    {
+        static int now_designing = 0;
+
+        static bool opt_enable_grid = true;
+
+        ImGui::SliderInt("color", &now_designing, 0, 3);
+
+        ImGui::Checkbox("Enable grid", &opt_enable_grid);
+
+        if(ImGui::Button("Clear Points"))
+            for(int i = 0; i < 4; i++)
+                rgb_polylines[i].clear();
+
+
+        if(ImGui::Button("Output Points"))
+            for(int i = 0; i < 4; i++)
+            {
+                for(auto point: rgb_polylines[i])
+                {
+                    cout << point.x << ", " << point.y << endl;
+                }
+
+                cout << "--------------" << endl;
+            }
+
+        // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
+        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
+        // ImVec2 canvas_sz = ImGui::GetContentRegionAvail();   // Resize canvas to what's available
+        ImVec2 canvas_sz = ImVec2(510, 255);
+        // if (canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
+        // if (canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
+        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+
+        // Draw border and background color
+        ImGuiIO& io = ImGui::GetIO();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
+        draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
+
+        // This will catch our interactions
+        ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+        const bool is_hovered = ImGui::IsItemHovered(); // Hovered
+        const bool is_active = ImGui::IsItemActive();   // Held
+        const ImVec2 origin(canvas_p0.x, canvas_p0.y); // Lock scrolled origin
+        const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+
+        if(ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            if(mouse_pos_in_canvas.x > 0 && mouse_pos_in_canvas.x < canvas_p1.x &&
+               mouse_pos_in_canvas.y > 0 && mouse_pos_in_canvas.y < canvas_p1.y)
+                rgb_polylines[now_designing].push_back(mouse_pos_in_canvas);
+        }
+
+        if(rgb_polylines[now_designing].Size >= 1)
+        {
+            ImVector<ImVec2> tmp;
+
+            ImVec2 picking = rgb_polylines[now_designing].back();
+
+            for(auto i = rgb_polylines[now_designing].begin(); i != rgb_polylines[now_designing].end() - 1; i++)
+            {
+                if(i->x <= picking.x)
+                    tmp.push_back(*i);
+                else
+                {
+                    tmp.push_back(picking);
+                    picking = *i;
+                }
+            }
+
+            tmp.push_back(picking);
+
+            rgb_polylines[now_designing] = tmp;
+        }
+
+        // Draw grid + all lines in the canvas
+        draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+        if (opt_enable_grid)
+        {
+            const float GRID_STEP = 64.0f;
+            for (float x = 0; x < canvas_sz.x; x += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40));
+            for (float y = 0; y < canvas_sz.y; y += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
+        }
+
+        static unsigned int now_color[] = {
+            IM_COL32(255, 255, 255, 127),
+            IM_COL32(255, 0, 0, 255),
+            IM_COL32(0, 255, 0, 255),
+            IM_COL32(0, 0, 255, 255),
+        };
+
+        for(int colors = 0; colors < 4 ; ++colors)
+        {
+            for(int i = 0; i < rgb_polylines[colors].Size; i++)
+                draw_list->AddCircleFilled(ImVec2(origin.x + rgb_polylines[colors][i].x, origin.y + rgb_polylines[colors][i].y), 5.0f, now_color[colors]);
+
+            if(rgb_polylines[colors].Size >= 2)
+                for (int n = 0; n < rgb_polylines[colors].Size - 1; n += 1)
+                {
+                    draw_list->AddLine(
+                        ImVec2(origin.x + rgb_polylines[colors][n].x, origin.y + rgb_polylines[colors][n].y),
+                        ImVec2(origin.x + rgb_polylines[colors][n + 1].x, origin.y + rgb_polylines[colors][n + 1].y),
+                        now_color[colors],
+                        2.0f
+                    );
+                }
+        }
+
+        draw_list->PopClipRect();
+
         ImGui::End();
     }
 }
@@ -848,6 +979,22 @@ void WindowManagement::render_scene()
             model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f);
             shader_volume_rendering.set_uniform("model", model);
         }
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        this->volumes[i].draw();
+
+        this->shader.use();
+
+        shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
+        shader.set_uniform("projection", projection);
+        shader.set_uniform("light_color", light_color);
+        shader.set_uniform("enable_section", enable_section);
+        shader.set_uniform("base_color", base_color);
+        camera.use(shader);
+        shader.set_uniform("model", model);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         this->volumes[i].draw();
     }
