@@ -991,7 +991,7 @@ void Volume::draw()
 
     glBindVertexArray(vao.id);
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     // glPolygonMode(GL_BACK, GL_LINE);
 
     glDrawArrays(GL_TRIANGLES, 0, this->vao.count);

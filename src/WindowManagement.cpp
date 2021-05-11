@@ -544,162 +544,198 @@ void WindowManagement::imgui()
     };
     static string selected_method = "iso surface";
 
+    static bool switch_main = true;
+    static bool switch_mk_table = true;
+    static bool switch_histogram = true;
+    static bool switch_canvas = true;
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
+    if ((!switch_main || !switch_mk_table || !switch_histogram || !switch_canvas) && ImGui::BeginMainMenuBar())
+    {
+        if (!switch_main && ImGui::BeginMenu("Main"))
+        {
+            switch_main = true;
+
+            ImGui::EndMenu();
+        }
+        if (!switch_mk_table && ImGui::BeginMenu("MK Table"))
+        {
+            switch_mk_table = true;
+
+            ImGui::EndMenu();
+        }
+        if (!switch_histogram && ImGui::BeginMenu("Histogram"))
+        {
+            switch_histogram = true;
+
+            ImGui::EndMenu();
+        }
+        if (!switch_canvas && ImGui::BeginMenu("Canvas"))
+        {
+            switch_canvas = !switch_canvas;
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(35, 10), ImGuiCond_Once);
     ImGui::SetNextWindowSize(ImVec2(250, 450), ImGuiCond_Once);
 
-    ImGui::Begin("Is that a bird?");
+    if(switch_main)
     {
-        ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-        ImGui::Text("File");
-
-        if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
+        ImGui::Begin("Is that a bird?", &switch_main);
         {
-            for (int i = 0; i < scalar_infs.size(); i++)
+            ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+            ImGui::Text("File");
+
+            if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
             {
-                if (ImGui::Selectable(scalar_infs[i].c_str()))
+                for (int i = 0; i < scalar_infs.size(); i++)
                 {
-                    selected_inf = scalar_infs[i];
-                    selected_raw = scalar_infs[i];
-                    is_load = false;
-                    is_show = false;
+                    if (ImGui::Selectable(scalar_infs[i].c_str()))
+                    {
+                        selected_inf = scalar_infs[i];
+                        selected_raw = scalar_infs[i];
+                        is_load = false;
+                        is_show = false;
+                    }
                 }
+
+                ImGui::EndCombo();
             }
 
-            ImGui::EndCombo();
-        }
-
-        if (ImGui::BeginCombo(".raw", selected_raw.c_str()))
-        {
-            for (int i = 0; i < scalar_raws.size(); i++)
+            if (ImGui::BeginCombo(".raw", selected_raw.c_str()))
             {
-                if (ImGui::Selectable(scalar_raws[i].c_str()))
+                for (int i = 0; i < scalar_raws.size(); i++)
                 {
-                    selected_raw = scalar_raws[i];
-                    is_load = false;
-                    is_show = false;
+                    if (ImGui::Selectable(scalar_raws[i].c_str()))
+                    {
+                        selected_raw = scalar_raws[i];
+                        is_load = false;
+                        is_show = false;
+                    }
                 }
+
+                ImGui::EndCombo();
             }
 
-            ImGui::EndCombo();
-        }
-
-        if(ImGui::BeginCombo("Method", selected_method.c_str()))
-        {
-            for(int i = 0; i < selectable_methods.size(); i++)
+            if(ImGui::BeginCombo("Method", selected_method.c_str()))
             {
-                if(ImGui::Selectable(selectable_methods[i].c_str()))
+                for(int i = 0; i < selectable_methods.size(); i++)
                 {
-                    selected_method = selectable_methods[i];
+                    if(ImGui::Selectable(selectable_methods[i].c_str()))
+                    {
+                        selected_method = selectable_methods[i];
 
-                    if(i == METHODS::ISO_SURFACE)
-                        this->method = METHODS::ISO_SURFACE;
-                    else if(i == METHODS::VOLUME_RENDERING)
-                        this->method = METHODS::VOLUME_RENDERING;
+                        if(i == METHODS::ISO_SURFACE)
+                            this->method = METHODS::ISO_SURFACE;
+                        else if(i == METHODS::VOLUME_RENDERING)
+                            this->method = METHODS::VOLUME_RENDERING;
+                    }
                 }
+
+                ImGui::EndCombo();
             }
 
-            ImGui::EndCombo();
+            if(this->method == METHODS::ISO_SURFACE)
+            {
+                ImGui::InputInt("Iso Value", &iso_value);
+            }
+
+            if (ImGui::Button("Load", ImVec2(100.0f, 30.0f)))
+            {
+                if(!this->showing_last && this->volumes.size() > 0)
+                    this->volumes.pop_back();
+
+                is_load = true;
+
+                // if(this->test_volume != NULL)
+                //     delete this->test_volume;
+
+                this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", this->method, iso_value, pow(2, g_max / 20)));
+
+                cout << "Load: " << this->volumes.back().vao.count << endl;
+
+                this->showing_last = false;
+            }
+
+            if(this->volumes.size() > 0)
+                ImGui::SameLine();
+
+            if (this->volumes.size() > 0 && ImGui::Button("Clear", ImVec2(100.0f, 30.0f)))
+            {
+                this->volumes.clear();
+
+                is_load = false;
+
+                cout << "Clear" << endl;
+            }
+
+            if (is_load && ImGui::Button("Show", ImVec2(100.0f, 30.0f)))
+            {
+                this->showing_last = true;
+
+                Volume tmp = this->volumes.back();
+
+                this->volumes.clear();
+
+                this->volumes.push_back(tmp);
+
+                cout << "Show" << endl;
+
+                is_load = false;
+            }
+
+            if(is_load)
+                ImGui::SameLine();
+
+            if (is_load && this->volumes.size() > 1 && ImGui::Button("Blend", ImVec2(100.0f, 30.0f)))
+            {
+                this->showing_last = true;
+
+                cout << "Blend" << endl;
+
+                is_load = false;
+            }
+
+            if(!is_load || this->volumes.size() <= 1)
+                ImGui::NewLine();
+
+            ImGui::Text("Slicing Plane");
+
+            ImGui::SliderFloat("x", &(this->clip_x), -1.0f, 1.0f);
+            ImGui::SliderFloat("y", &(this->clip_y), -1.0f, 1.0f);
+            ImGui::SliderFloat("z", &(this->clip_z), -1.0f, 1.0f);
+            ImGui::SliderFloat("clip", &(this->clip), -200.0f, 200.0f);
+            {
+                glm::vec3 tmp = glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z));
+
+                this->clip_x = tmp.x;
+                this->clip_y = tmp.y;
+                this->clip_z = tmp.z;
+            }
+
+            ImGui::Checkbox("Section", &enable_section);
+
+            ImGui::Text("Base Color");
+
+            ImGui::SliderFloat("red", &base_color.x, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("green", &base_color.y, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("blue", &base_color.z, 0.0f, 1.0f, "%.2f");
         }
-
-        if(this->method == METHODS::ISO_SURFACE)
-        {
-            ImGui::InputInt("Iso Value", &iso_value);
-        }
-
-        if (ImGui::Button("Load", ImVec2(100.0f, 30.0f)))
-        {
-            if(!this->showing_last && this->volumes.size() > 0)
-                this->volumes.pop_back();
-
-            is_load = true;
-
-            // if(this->test_volume != NULL)
-            //     delete this->test_volume;
-
-            this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", this->method, iso_value, pow(2, g_max / 20)));
-
-            cout << "Load: " << this->volumes.back().vao.count << endl;
-
-            this->showing_last = false;
-        }
-
-        if(this->volumes.size() > 0)
-            ImGui::SameLine();
-
-        if (this->volumes.size() > 0 && ImGui::Button("Clear", ImVec2(100.0f, 30.0f)))
-        {
-            this->volumes.clear();
-
-            is_load = false;
-
-            cout << "Clear" << endl;
-        }
-
-        if (is_load && ImGui::Button("Show", ImVec2(100.0f, 30.0f)))
-        {
-            this->showing_last = true;
-
-            Volume tmp = this->volumes.back();
-
-            this->volumes.clear();
-
-            this->volumes.push_back(tmp);
-
-            cout << "Show" << endl;
-
-            is_load = false;
-        }
-
-        if(is_load)
-            ImGui::SameLine();
-
-        if (is_load && this->volumes.size() > 1 && ImGui::Button("Blend", ImVec2(100.0f, 30.0f)))
-        {
-            this->showing_last = true;
-
-            cout << "Blend" << endl;
-
-            is_load = false;
-        }
-
-        if(!is_load || this->volumes.size() <= 1)
-            ImGui::NewLine();
-
-        ImGui::Text("Slicing Plane");
-
-        ImGui::SliderFloat("x", &(this->clip_x), -1.0f, 1.0f);
-        ImGui::SliderFloat("y", &(this->clip_y), -1.0f, 1.0f);
-        ImGui::SliderFloat("z", &(this->clip_z), -1.0f, 1.0f);
-        ImGui::SliderFloat("clip", &(this->clip), -200.0f, 200.0f);
-        {
-            glm::vec3 tmp = glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z));
-
-            this->clip_x = tmp.x;
-            this->clip_y = tmp.y;
-            this->clip_z = tmp.z;
-        }
-
-        ImGui::Checkbox("Section", &enable_section);
-
-        ImGui::Text("Base Color");
-
-        ImGui::SliderFloat("red", &base_color.x, 0.0f, 1.0f, "%.2f");
-        ImGui::SliderFloat("green", &base_color.y, 0.0f, 1.0f, "%.2f");
-        ImGui::SliderFloat("blue", &base_color.z, 0.0f, 1.0f, "%.2f");
+        ImGui::End();
     }
-    ImGui::End();
 
     if(this->volumes.size() > 0)
     {
         ImGui::SetNextWindowPos(ImVec2(this->width - 475, this->height - 425), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
-
-        static bool switch_histogram = true;
 
         if(switch_histogram) {
             ImGui::Begin("Histogram", &switch_histogram);
@@ -745,8 +781,6 @@ void WindowManagement::imgui()
             ImGui::End();
         }
 
-        static bool switch_mk_table = true;
-
         if(switch_mk_table) {
 
             ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
@@ -787,8 +821,6 @@ void WindowManagement::imgui()
             ImGui::End();
         }
     }
-
-    static bool switch_canvas = true;
 
     if(switch_canvas) {
 
@@ -955,10 +987,10 @@ void WindowManagement::imgui()
             }
 
             static unsigned int now_color[] = {
-                IM_COL32(255, 255, 255, 127),
                 IM_COL32(255, 0, 0, 255),
                 IM_COL32(0, 255, 0, 255),
                 IM_COL32(0, 0, 255, 255),
+                IM_COL32(255, 255, 255, 127),
             };
 
             for(int colors = 0; colors < 4 ; ++colors)
@@ -1063,22 +1095,6 @@ void WindowManagement::render_scene()
             model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f);
             shader_volume_rendering.set_uniform("model", model);
         }
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        this->volumes[i].draw();
-
-        this->shader.use();
-
-        shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
-        shader.set_uniform("projection", projection);
-        shader.set_uniform("light_color", light_color);
-        shader.set_uniform("enable_section", enable_section);
-        shader.set_uniform("base_color", base_color);
-        camera.use(shader);
-        shader.set_uniform("model", model);
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         this->volumes[i].draw();
     }
