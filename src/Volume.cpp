@@ -835,12 +835,15 @@ unsigned int retrieve_polyline_value(ImVector<ImVec2> polyline, int x)
 
 void Volume::reload_1d_texture(vector<ImVector<ImVec2>> rgba_polylines)
 {
+    delete this->texture_data_1d;
+    this->texture_data_1d = new unsigned char[256][4];
+
     for(int i = 0; i < 256 ; i++)
     {
         this->texture_data_1d[i][0] = retrieve_polyline_value(rgba_polylines[0], i);
         this->texture_data_1d[i][1] = retrieve_polyline_value(rgba_polylines[1], i);
         this->texture_data_1d[i][2] = retrieve_polyline_value(rgba_polylines[2], i);
-        this->texture_data_1d[i][3] = (retrieve_polyline_value(rgba_polylines[3], i)) / 16;
+        this->texture_data_1d[i][3] = (retrieve_polyline_value(rgba_polylines[3], i)) / 4;
     }
 
     glDeleteTextures(1, &this->texture_1d);

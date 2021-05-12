@@ -4,6 +4,7 @@ a.out
 main
 main.exe
 Data/
+color_template/
 *.zip
 *.old
 imgui.ini

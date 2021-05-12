@@ -51,9 +51,13 @@ void main()
             continue;
         }
 
-        now_decay += sample_point_tex_color.a;
+        now_decay += sample_point_tex_color.a * (1 - now_decay);
 
-        FragColor += sample_point_tex_color;
+        vec3 color = sample_point_tex_color.rgb;
+
+        color *= sample_point_tex_color.a;
+
+        FragColor += vec4(color, sample_point_tex_color.a);
     }
 
     return;

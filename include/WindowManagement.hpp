@@ -74,6 +74,9 @@ class WindowManagement
 
         void framebuffer_callback(GLFWwindow * w, int width, int height);
 
+        void generate_template_combo();
+        void load_color_template(string name);
+
         void imgui();
 
         void render_scene();
@@ -93,6 +96,7 @@ class WindowManagement
 
         METHODS method;
         vector<string> scalar_infs, scalar_raws;
+        vector<string> color_template_files;
 
         /*-----Create image space for textures -----*/
         unsigned int   textName[5];

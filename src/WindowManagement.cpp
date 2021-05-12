@@ -200,6 +200,7 @@ bool WindowManagement::init(string window_name)
     // -----------------------------------------
 
     generate_combo();
+    generate_template_combo();
 
     return true;
 }
@@ -533,6 +534,34 @@ bool compare(ImVec2 x, ImVec2 y)
     return x.x < y.x;
 }
 
+void WindowManagement::generate_template_combo()
+{
+    DIR *dp;
+    dirent *dirp;
+
+    if((dp = opendir("./color_template")) != NULL)
+    {
+        while((dirp = readdir(dp)) != NULL)
+        {
+            string temp = dirp->d_name;
+            int index_color = temp.find(".color");
+
+            if(index_color != string::npos) this->color_template_files.push_back(temp.substr(0, index_color));
+        }
+    }
+    closedir(dp);
+
+    sort(this->color_template_files.begin(), this->color_template_files.end());
+}
+
+void WindowManagement::load_color_template(string name)
+{
+    if(name == "")
+        return;
+
+    cout << "load: " << name << endl;
+}
+
 void WindowManagement::imgui()
 {
     // cout << clip << endl;
@@ -550,9 +579,12 @@ void WindowManagement::imgui()
     static string selected_method = "iso surface";
 
     static bool switch_main = true;
-    static bool switch_mk_table = true;
-    static bool switch_histogram = true;
+    static bool switch_mk_table = false;
+    static bool switch_histogram = false;
     static bool switch_canvas = true;
+
+    static string selected_color = "";
+    static char export_name[64] = "";
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -742,7 +774,8 @@ void WindowManagement::imgui()
         ImGui::SetNextWindowPos(ImVec2(this->width - 475, this->height - 425), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
 
-        if(switch_histogram) {
+        if(switch_histogram)
+        {
             ImGui::Begin("Histogram", &switch_histogram);
             {
 
@@ -786,10 +819,11 @@ void WindowManagement::imgui()
             ImGui::End();
         }
 
-        if(switch_mk_table) {
+        if(switch_mk_table)
+        {
 
-            ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(25, this->height - 450), ImGuiCond_Once);
+            ImGui::SetNextWindowSize(ImVec2(450, 425), ImGuiCond_Once);
             ImPlot::SetNextPlotLimits(0.0, 256.0, 0.0, g_max, ImGuiCond_Always);
 
             ImGui::Begin("M-K Table", &switch_mk_table);
@@ -825,199 +859,222 @@ void WindowManagement::imgui()
             }
             ImGui::End();
         }
-    }
 
-    if(switch_canvas) {
-
-        ImGui::SetNextWindowPos(ImVec2(25, this->height - 425), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(550, 400), ImGuiCond_Once);
-
-        ImGui::Begin("Canvas", &switch_canvas);
+        if(this->volumes.back().method == METHODS::VOLUME_RENDERING && switch_canvas)
         {
-            static int now_designing = 0;
-            static int now_hovering = -1;
 
-            static bool opt_enable_grid = true;
+            ImGui::SetNextWindowPos(ImVec2(25, this->height - 450), ImGuiCond_Once);
+            ImGui::SetNextWindowSize(ImVec2(550, 425), ImGuiCond_Once);
 
-            ImGui::SliderInt("color", &now_designing, 0, 3);
+            ImGui::Begin("Canvas", &switch_canvas);
+            {
+                static int now_designing = 0;
+                static int now_hovering = -1;
 
-            ImGui::Checkbox("Enable grid", &opt_enable_grid);
+                static bool opt_enable_grid = true;
 
-            if(ImGui::Button("Clear Points"))
-                for(int i = 0; i < 4; i++)
-                    rgba_polylines[i].clear();
-
-
-            if(ImGui::Button("Output Points"))
-                for(int i = 0; i < 4; i++)
+                if (ImGui::BeginCombo(".color##1", selected_color.c_str()))
                 {
-                    for(auto point: rgba_polylines[i])
-                    {
-                        cout << point.x << ", " << point.y << endl;
-                    }
+                    for (int i = 0; i < color_template_files.size(); i++)
+                        if (ImGui::Selectable(color_template_files[i].c_str()))
+                            selected_color = color_template_files[i];
 
-                    cout << "--------------" << endl;
+                    ImGui::EndCombo();
                 }
 
-            // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
-            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
-            // ImVec2 canvas_sz = ImGui::GetContentRegionAvail();   // Resize canvas to what's available
-            ImVec2 canvas_sz = ImVec2(510, 255);
-            // if (canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
-            // if (canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
-            ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+                ImGui::SameLine();
 
-            // Draw border and background color
-            ImGuiIO& io = ImGui::GetIO();
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
-            draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
+                if(ImGui::Button("Import"))
+                    load_color_template(selected_color);
 
-            // This will catch our interactions
-            ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-            const bool is_hovered = ImGui::IsItemHovered(); // Hovered
-            const bool is_active = ImGui::IsItemActive();   // Held
-            const ImVec2 origin(canvas_p0.x, canvas_p0.y); // Lock scrolled origin
-            const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+                ImGui::SliderInt("color", &now_designing, 0, 3);
 
-            static bool drag = false;
-            static int dragging = -1;
+                ImGui::Checkbox("Enable grid", &opt_enable_grid);
 
-            if(now_hovering < 0 && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                if(mouse_pos_in_canvas.x > 0 && mouse_pos_in_canvas.x < canvas_p1.x &&
-                mouse_pos_in_canvas.y > 0 && mouse_pos_in_canvas.y < canvas_p1.y)
-                    rgba_polylines[now_designing].push_back(mouse_pos_in_canvas);
+                if(ImGui::Button("Clear Points"))
+                    for(int i = 0; i < 4; i++)
+                        rgba_polylines[i].clear();
 
-                sort(rgba_polylines[now_designing].begin(), rgba_polylines[now_designing].end(), compare);
-            }
-            else if(ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-            {
-                drag = false;
-            }
+                ImGui::InputText(".color##2", export_name, IM_ARRAYSIZE(export_name));
 
-            if(!drag)
-            {
-                if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                    drag = true;
+                ImGui::SameLine();
 
-                int cnt = 0;
+                if(ImGui::Button("Export") && string(export_name) != "")
+                {
+                    ofstream color_file;
+                    color_file.open ("color_template/" + string(export_name) + ".color");
 
-                ImVec2 * i;
+                    for(int i = 0; i < 4; i++)
+                    {
+                        for(auto point: rgba_polylines[i])
+                        {
+                            color_file << point.x << ", " << point.y << endl;
+                        }
+
+                        color_file << "--------------" << endl;
+                    }
+                }
+
+                // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
+                ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
+                // ImVec2 canvas_sz = ImGui::GetContentRegionAvail();   // Resize canvas to what's available
+                ImVec2 canvas_sz = ImVec2(510, 255);
+                // if (canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
+                // if (canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
+                ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+
+                // Draw border and background color
+                ImGuiIO& io = ImGui::GetIO();
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
+                draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
+
+                // This will catch our interactions
+                ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+                const bool is_hovered = ImGui::IsItemHovered(); // Hovered
+                const bool is_active = ImGui::IsItemActive();   // Held
+                const ImVec2 origin(canvas_p0.x, canvas_p0.y); // Lock scrolled origin
+                const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+
+                static bool drag = false;
+                static int dragging = -1;
+
+                if(now_hovering < 0 && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                {
+                    if(mouse_pos_in_canvas.x > 0 && mouse_pos_in_canvas.x < canvas_p1.x &&
+                    mouse_pos_in_canvas.y > 0 && mouse_pos_in_canvas.y < canvas_p1.y)
+                        rgba_polylines[now_designing].push_back(mouse_pos_in_canvas);
+
+                    sort(rgba_polylines[now_designing].begin(), rgba_polylines[now_designing].end(), compare);
+                }
+                else if(ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+                {
+                    drag = false;
+                }
+
+                if(!drag)
+                {
+                    if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                        drag = true;
+
+                    int cnt = 0;
+
+                    ImVec2 * i;
+
+                    for(int colors = 0; colors < 4 ; ++colors)
+                    {
+                        for(i = rgba_polylines[colors].begin(); i != rgba_polylines[colors].end(); i++)
+                        {
+                            if(glm::distance(glm::vec2(mouse_pos_in_canvas.x, mouse_pos_in_canvas.y), glm::vec2(i->x, i->y)) <= 5.5f)
+                            {
+                                dragging = i - rgba_polylines[colors].begin();
+
+                                now_hovering = colors;
+
+                                if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                                    now_designing = colors;
+
+                                break;
+                            }
+                        }
+
+                        if(i == rgba_polylines[colors].end())
+                            cnt++;
+                    }
+
+                    if(cnt == 4)
+                    {
+                        dragging = -1;
+
+                        now_hovering = -1;
+                    }
+                    else if(ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
+                    {
+                        rgba_polylines[now_hovering].erase(rgba_polylines[now_hovering].begin() + dragging);
+                    }
+                }
+                else if(dragging >= 0)
+                {
+                    if(dragging > 0 && mouse_pos_in_canvas.x < rgba_polylines[now_designing][dragging - 1].x)
+                    {
+                        rgba_polylines[now_designing][dragging].x = rgba_polylines[now_designing][dragging - 1].x;
+
+                        rgba_polylines[now_designing][dragging].y = mouse_pos_in_canvas.y;
+                    }
+                    else if(dragging < rgba_polylines[now_designing].size() - 1 && mouse_pos_in_canvas.x >= rgba_polylines[now_designing][dragging + 1].x)
+                    {
+                        rgba_polylines[now_designing][dragging].x = rgba_polylines[now_designing][dragging + 1].x;
+
+                        rgba_polylines[now_designing][dragging].y = mouse_pos_in_canvas.y;
+                    }
+                    else
+                        rgba_polylines[now_designing][dragging] = mouse_pos_in_canvas;
+
+                    rgba_polylines[now_designing][dragging].x = glm::clamp(rgba_polylines[now_designing][dragging].x, 0.0f, canvas_sz.x);
+                    rgba_polylines[now_designing][dragging].y = glm::clamp(rgba_polylines[now_designing][dragging].y, 0.0f, canvas_sz.y);
+                }
+
+
+                // Draw grid + all lines in the canvas
+                draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+                if (opt_enable_grid)
+                {
+                    const float GRID_STEP = 32.0f;
+                    for (float x = 0; x < canvas_sz.x; x += GRID_STEP)
+                        draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40));
+                    for (float y = 0; y < canvas_sz.y; y += GRID_STEP)
+                        draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
+                }
+
+                static unsigned int now_color[] = {
+                    IM_COL32(255, 0, 0, 255),
+                    IM_COL32(0, 255, 0, 255),
+                    IM_COL32(0, 0, 255, 255),
+                    IM_COL32(255, 255, 255, 127),
+                };
 
                 for(int colors = 0; colors < 4 ; ++colors)
                 {
-                    for(i = rgba_polylines[colors].begin(); i != rgba_polylines[colors].end(); i++)
-                    {
-                        if(glm::distance(glm::vec2(mouse_pos_in_canvas.x, mouse_pos_in_canvas.y), glm::vec2(i->x, i->y)) <= 5.5f)
+                    if(rgba_polylines[colors].Size >= 2)
+                        for (int n = 0; n < rgba_polylines[colors].Size - 1; n += 1)
                         {
-                            dragging = i - rgba_polylines[colors].begin();
-
-                            now_hovering = colors;
-
-                            if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                                now_designing = colors;
-
-                            break;
+                            draw_list->AddLine(
+                                ImVec2(origin.x + rgba_polylines[colors][n].x, origin.y + rgba_polylines[colors][n].y),
+                                ImVec2(origin.x + rgba_polylines[colors][n + 1].x, origin.y + rgba_polylines[colors][n + 1].y),
+                                now_color[colors],
+                                2.0f
+                            );
                         }
-                    }
 
-                    if(i == rgba_polylines[colors].end())
-                        cnt++;
-                }
-
-                if(cnt == 4)
-                {
-                    dragging = -1;
-
-                    now_hovering = -1;
-                }
-                else if(ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
-                {
-                    rgba_polylines[now_hovering].erase(rgba_polylines[now_hovering].begin() + dragging);
-                }
-            }
-            else if(dragging >= 0)
-            {
-                if(dragging > 0 && mouse_pos_in_canvas.x < rgba_polylines[now_designing][dragging - 1].x)
-                {
-                    rgba_polylines[now_designing][dragging].x = rgba_polylines[now_designing][dragging - 1].x;
-
-                    rgba_polylines[now_designing][dragging].y = mouse_pos_in_canvas.y;
-                }
-                else if(dragging < rgba_polylines[now_designing].size() - 1 && mouse_pos_in_canvas.x >= rgba_polylines[now_designing][dragging + 1].x)
-                {
-                    rgba_polylines[now_designing][dragging].x = rgba_polylines[now_designing][dragging + 1].x;
-
-                    rgba_polylines[now_designing][dragging].y = mouse_pos_in_canvas.y;
-                }
-                else
-                    rgba_polylines[now_designing][dragging] = mouse_pos_in_canvas;
-
-                rgba_polylines[now_designing][dragging].x = glm::clamp(rgba_polylines[now_designing][dragging].x, 0.0f, canvas_sz.x);
-                rgba_polylines[now_designing][dragging].y = glm::clamp(rgba_polylines[now_designing][dragging].y, 0.0f, canvas_sz.y);
-            }
-
-
-            // Draw grid + all lines in the canvas
-            draw_list->PushClipRect(canvas_p0, canvas_p1, true);
-            if (opt_enable_grid)
-            {
-                const float GRID_STEP = 32.0f;
-                for (float x = 0; x < canvas_sz.x; x += GRID_STEP)
-                    draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40));
-                for (float y = 0; y < canvas_sz.y; y += GRID_STEP)
-                    draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
-            }
-
-            static unsigned int now_color[] = {
-                IM_COL32(255, 0, 0, 255),
-                IM_COL32(0, 255, 0, 255),
-                IM_COL32(0, 0, 255, 255),
-                IM_COL32(255, 255, 255, 127),
-            };
-
-            for(int colors = 0; colors < 4 ; ++colors)
-            {
-                if(rgba_polylines[colors].Size >= 2)
-                    for (int n = 0; n < rgba_polylines[colors].Size - 1; n += 1)
+                    for(int i = 0; i < rgba_polylines[colors].Size; i++)
                     {
-                        draw_list->AddLine(
-                            ImVec2(origin.x + rgba_polylines[colors][n].x, origin.y + rgba_polylines[colors][n].y),
-                            ImVec2(origin.x + rgba_polylines[colors][n + 1].x, origin.y + rgba_polylines[colors][n + 1].y),
-                            now_color[colors],
-                            2.0f
-                        );
-                    }
-
-                for(int i = 0; i < rgba_polylines[colors].Size; i++)
-                {
-                    if(colors == now_hovering && i == dragging)
-                        if(drag)
-                            draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 4.5f, IM_COL32(255, 255, 255, 255));
+                        if(colors == now_hovering && i == dragging)
+                            if(drag)
+                                draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 4.5f, IM_COL32(255, 255, 255, 255));
+                            else
+                                draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 6.25f, IM_COL32(255, 255, 255, 255));
                         else
-                            draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 6.25f, IM_COL32(255, 255, 255, 255));
-                    else
-                        draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 5.5f, IM_COL32(255, 255, 255, 255));
+                            draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 5.5f, IM_COL32(255, 255, 255, 255));
 
-                    draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 4.0f, now_color[colors]);
+                        draw_list->AddCircleFilled(ImVec2(origin.x + rgba_polylines[colors][i].x, origin.y + rgba_polylines[colors][i].y), 4.0f, now_color[colors]);
+                    }
                 }
+
+                draw_list->PopClipRect();
+
+                static bool update = false;
+
+                if(!update && ImGui::Button("start updating"))
+                    update = true;
+
+                if(update && ImGui::Button("stop updating"))
+                    update = false;
+
+                if(update)
+                    this->volumes.back().reload_1d_texture(rgba_polylines);
+
+                ImGui::End();
             }
-
-            draw_list->PopClipRect();
-
-            static bool update = false;
-
-            if(!update && ImGui::Button("start updating"))
-                update = true;
-
-            if(update && ImGui::Button("stop updating"))
-                update = false;
-
-            if(update)
-                this->volumes.back().reload_1d_texture(rgba_polylines);
-
-            ImGui::End();
         }
     }
 }
