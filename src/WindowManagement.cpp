@@ -131,6 +131,11 @@ bool WindowManagement::init(string window_name)
 
     this->rgba_polylines.assign(4, ImVector<ImVec2>());
 
+    this->volume_rendering_shading = false;
+    this->volume_rendering_last_decay = 1;
+    this->volume_rendering_gap = 1;
+    this->volume_rendering_modifier = 1;
+
     // -----------------------------------------
 
     float vertices[] = {
@@ -536,6 +541,8 @@ bool compare(ImVec2 x, ImVec2 y)
 
 void WindowManagement::generate_template_combo()
 {
+    this->color_template_files.clear();
+
     DIR *dp;
     dirent *dirp;
 
@@ -560,6 +567,31 @@ void WindowManagement::load_color_template(string name)
         return;
 
     cout << "load: " << name << endl;
+
+    this->rgba_polylines.assign(4, ImVector<ImVec2>());
+
+    ifstream color_file;
+
+    color_file.open("color_template/" + name + ".color");
+
+    static float inp_x, inp_y;
+
+    for(int i = 0; i < 4; i++)
+    {
+        while(true)
+        {
+            color_file >> inp_x;
+
+            if(inp_x < 0)
+                break;
+
+            color_file >> inp_y;
+
+            rgba_polylines[i].push_back(ImVec2(inp_x, inp_y));
+        }
+
+        sort(rgba_polylines[i].begin(), rgba_polylines[i].end(), compare);
+    }
 }
 
 void WindowManagement::imgui()
@@ -585,6 +617,7 @@ void WindowManagement::imgui()
 
     static string selected_color = "";
     static char export_name[64] = "";
+    static bool update_color = false;
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -744,27 +777,62 @@ void WindowManagement::imgui()
             if(!is_load || this->volumes.size() <= 1)
                 ImGui::NewLine();
 
-            ImGui::Text("Slicing Plane");
-
-            ImGui::SliderFloat("x", &(this->clip_x), -1.0f, 1.0f);
-            ImGui::SliderFloat("y", &(this->clip_y), -1.0f, 1.0f);
-            ImGui::SliderFloat("z", &(this->clip_z), -1.0f, 1.0f);
-            ImGui::SliderFloat("clip", &(this->clip), -200.0f, 200.0f);
+            if(this->method == METHODS::VOLUME_RENDERING)
             {
-                glm::vec3 tmp = glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z));
+                ImGui::Checkbox("enable shading", &volume_rendering_shading);
 
-                this->clip_x = tmp.x;
-                this->clip_y = tmp.y;
-                this->clip_z = tmp.z;
+                ImGui::NewLine();
+
+                ImGui::InputFloat("decay", &this->volume_rendering_last_decay, 0.05, 0.2);
+
+                if(this->volume_rendering_last_decay < 0)
+                    this->volume_rendering_last_decay = 0;
+                else if(this->volume_rendering_last_decay > 1)
+                    this->volume_rendering_last_decay = 1;
+
+                ImGui::NewLine();
+
+                ImGui::InputFloat("gap", &this->volume_rendering_gap, 0.05, 1);
+
+                if(this->volume_rendering_gap < 0.001)
+                    this->volume_rendering_gap = 0.001;
+                else if(this->volume_rendering_gap > 10)
+                    this->volume_rendering_gap = 10;
+
+                ImGui::NewLine();
+
+                ImGui::InputFloat("modifier", &this->volume_rendering_modifier, 0.05, 0.2);
+
+                if(this->volume_rendering_modifier < 0)
+                    this->volume_rendering_modifier = 0;
+                else if(this->volume_rendering_modifier > 5)
+                    this->volume_rendering_modifier = 5;
             }
 
-            ImGui::Checkbox("Section", &enable_section);
+            if(this->method == METHODS::ISO_SURFACE)
+            {
+                ImGui::Text("Slicing Plane");
 
-            ImGui::Text("Base Color");
+                ImGui::SliderFloat("x", &(this->clip_x), -1.0f, 1.0f);
+                ImGui::SliderFloat("y", &(this->clip_y), -1.0f, 1.0f);
+                ImGui::SliderFloat("z", &(this->clip_z), -1.0f, 1.0f);
+                ImGui::SliderFloat("clip", &(this->clip), -200.0f, 200.0f);
+                {
+                    glm::vec3 tmp = glm::normalize(glm::vec3(this->clip_x, this->clip_y, this->clip_z));
 
-            ImGui::SliderFloat("red", &base_color.x, 0.0f, 1.0f, "%.2f");
-            ImGui::SliderFloat("green", &base_color.y, 0.0f, 1.0f, "%.2f");
-            ImGui::SliderFloat("blue", &base_color.z, 0.0f, 1.0f, "%.2f");
+                    this->clip_x = tmp.x;
+                    this->clip_y = tmp.y;
+                    this->clip_z = tmp.z;
+                }
+
+                ImGui::Checkbox("Section", &enable_section);
+
+                ImGui::Text("Base Color");
+
+                ImGui::SliderFloat("red", &base_color.x, 0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("green", &base_color.y, 0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("blue", &base_color.z, 0.0f, 1.0f, "%.2f");
+            }
         }
         ImGui::End();
     }
@@ -863,8 +931,8 @@ void WindowManagement::imgui()
         if(this->volumes.back().method == METHODS::VOLUME_RENDERING && switch_canvas)
         {
 
-            ImGui::SetNextWindowPos(ImVec2(25, this->height - 450), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(550, 425), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(this->width - 575, this->height - 475), ImGuiCond_Once);
+            ImGui::SetNextWindowSize(ImVec2(550, 450), ImGuiCond_Once);
 
             ImGui::Begin("Canvas", &switch_canvas);
             {
@@ -885,7 +953,16 @@ void WindowManagement::imgui()
                 ImGui::SameLine();
 
                 if(ImGui::Button("Import"))
+                {
                     load_color_template(selected_color);
+
+                    update_color = true;
+                }
+
+                ImGui::SameLine();
+
+                if(ImGui::Button("(R)"))
+                    generate_template_combo();
 
                 ImGui::SliderInt("color", &now_designing, 0, 3);
 
@@ -901,18 +978,64 @@ void WindowManagement::imgui()
 
                 if(ImGui::Button("Export") && string(export_name) != "")
                 {
-                    ofstream color_file;
-                    color_file.open ("color_template/" + string(export_name) + ".color");
+                    generate_template_combo();
 
-                    for(int i = 0; i < 4; i++)
+                    if(find(color_template_files.begin(), color_template_files.end(), string(export_name)) != color_template_files.end())
+                        ImGui::OpenPopup("Duplicate File Name");
+                    else
                     {
-                        for(auto point: rgba_polylines[i])
+                        ofstream color_file;
+                        color_file.open ("color_template/" + string(export_name) + ".color");
+
+                        for(int i = 0; i < 4; i++)
                         {
-                            color_file << point.x << ", " << point.y << endl;
+                            for(auto point: rgba_polylines[i])
+                            {
+                                color_file << point.x << " " << point.y << endl;
+                            }
+
+                            color_file << -1 << endl;
                         }
 
-                        color_file << "--------------" << endl;
+                        strcpy(export_name, "");
                     }
+                }
+
+                // Always center this window when appearing
+                ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+                if (ImGui::BeginPopupModal("Duplicate File Name", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::Text("Continue?\n\n");
+                    ImGui::Separator();
+
+                    if (ImGui::Button("Overwrite", ImVec2(120, 0)))
+                    {
+                        ofstream color_file;
+                        color_file.open ("color_template/" + string(export_name) + ".color");
+
+                        for(int i = 0; i < 4; i++)
+                        {
+                            for(auto point: rgba_polylines[i])
+                            {
+                                color_file << point.x << " " << point.y << endl;
+                            }
+
+                            color_file << -1 << endl;
+                        }
+                        strcpy(export_name, "");
+
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                        ImGui::CloseCurrentPopup();
+
+                    ImGui::EndPopup();
                 }
 
                 // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
@@ -1062,15 +1185,13 @@ void WindowManagement::imgui()
 
                 draw_list->PopClipRect();
 
-                static bool update = false;
+                if(!update_color && ImGui::Button("start updating"))
+                    update_color = true;
 
-                if(!update && ImGui::Button("start updating"))
-                    update = true;
+                if(update_color && ImGui::Button("stop updating"))
+                    update_color = false;
 
-                if(update && ImGui::Button("stop updating"))
-                    update = false;
-
-                if(update)
+                if(update_color)
                     this->volumes.back().reload_1d_texture(rgba_polylines);
 
                 ImGui::End();
@@ -1127,11 +1248,14 @@ void WindowManagement::render_scene()
             shader_volume_rendering.set_uniform("projection", projection);
             shader_volume_rendering.set_uniform("light_color", light_color);
             shader_volume_rendering.set_uniform("enable_section", enable_section);
-            shader_volume_rendering.set_uniform("base_color", base_color);
             shader_volume_rendering.set_uniform("using_texture1", 1);
             shader_volume_rendering.set_uniform("using_texture2", 2);
             shader_volume_rendering.set_uniform("resolution", this->volumes[i].resolution);
             shader_volume_rendering.set_uniform("voxelsize", this->volumes[i].voxelsize);
+            shader_volume_rendering.set_uniform("shade", volume_rendering_shading);
+            shader_volume_rendering.set_uniform("gap", volume_rendering_gap);
+            shader_volume_rendering.set_uniform("last_decay", volume_rendering_last_decay);
+            shader_volume_rendering.set_uniform("modifier", volume_rendering_modifier);
             camera.use(shader_volume_rendering);
         }
 

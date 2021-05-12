@@ -121,4 +121,9 @@ class WindowManagement
         bool enable_section;
 
         vector<ImVector<ImVec2>> rgba_polylines;
+
+        bool volume_rendering_shading;
+        float volume_rendering_gap;
+        float volume_rendering_last_decay;
+        float volume_rendering_modifier;
 };

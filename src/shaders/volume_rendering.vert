@@ -1,11 +1,11 @@
 #version 460 core
 
 layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aTexCoord;
+layout (location = 1) in vec3 aNormal;
 
 out vec3 frag_pos;
 out vec3 ori_pos;
-out vec3 tex_coord;
+out vec3 normal;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -20,5 +20,5 @@ void main()
 	// frag_pos = aPos;
 	ori_pos = aPos;
 
-	tex_coord = aTexCoord;
+	normal = aNormal;
 }
