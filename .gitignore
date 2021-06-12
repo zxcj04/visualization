@@ -4,6 +4,8 @@ a.out
 main
 main.exe
 Data/
-*.pdf
+color_template/
 *.zip
 *.old
+imgui.ini
+out
