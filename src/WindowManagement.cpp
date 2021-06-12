@@ -792,10 +792,15 @@ void WindowManagement::imgui()
 
                 ImGui::NewLine();
 
+                float old_gap = this->volume_rendering_gap;
+
                 ImGui::InputFloat("gap", &this->volume_rendering_gap, 0.05, 1);
 
-                if(this->volume_rendering_gap < 0.001)
-                    this->volume_rendering_gap = 0.001;
+                if(ImGui::GetIO().Framerate < 15.0f && this->volume_rendering_gap < old_gap)
+                    this->volume_rendering_gap = old_gap;
+
+                if(this->volume_rendering_gap <= 0.1)
+                    this->volume_rendering_gap = 0.1;
                 else if(this->volume_rendering_gap > 10)
                     this->volume_rendering_gap = 10;
 

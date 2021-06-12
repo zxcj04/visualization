@@ -101,7 +101,7 @@ void main()
 
         if(shade)
         {
-            vec4 point_color = phong_shading(sample_point_tex_color, now_frag_pos, sample_point_tex_coord.rgb);
+            vec4 point_color = phong_shading(sample_point_tex_color, now_frag_pos, sample_point_3d_tex.rgb);
 
             FragColor += point_color;
         }
