@@ -84,7 +84,7 @@ bool WindowManagement::init(string window_name)
 
     glfwMakeContextCurrent(this->window);
 
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     // glfwSetWindowAspectRatio(window, 1, 1);
 
@@ -94,7 +94,7 @@ bool WindowManagement::init(string window_name)
         return false;
     }
 
-    cout << "OpenGL shader language version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
+    cout << "OpenGL shader_iso_surface language version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 
     set_callback_functions();
 
@@ -107,10 +107,11 @@ bool WindowManagement::init(string window_name)
 
     system_init();
 
-    this->shader = Shader("./src/shaders/tri.vert", "./src/shaders/tri.frag");
+    this->shader_iso_surface = Shader("./src/shaders/iso_surface.vert", "./src/shaders/iso_surface.frag");
     this->shader_volume_rendering = Shader("./src/shaders/volume_rendering.vert", "./src/shaders/volume_rendering.frag");
+    this->shader_streamline = Shader("./src/shaders/streamline.vert", "./src/shaders/streamline.frag", "./src/shaders/streamline.gs");
 
-    cout << this->shader.ID << endl;
+    cout << this->shader_iso_surface.ID << endl;
     cout << this->shader_volume_rendering.ID << endl;
 
     this->camera = Camera();
@@ -135,6 +136,8 @@ bool WindowManagement::init(string window_name)
     this->volume_rendering_last_decay = 1;
     this->volume_rendering_gap = 1;
     this->volume_rendering_modifier = 1;
+
+    this->tapering_modifier = 0.3;
 
     // -----------------------------------------
 
@@ -210,6 +213,34 @@ bool WindowManagement::init(string window_name)
     return true;
 }
 
+bool is_not_digit(char c)
+{
+    return !isdigit(c);
+}
+
+bool numeric_string_compare(const string& s1, const string& s2)
+{
+    // handle empty strings...
+
+    string::const_iterator it1 = s1.begin(), it2 = s2.begin();
+
+    if (isdigit(s1[0]) && isdigit(s2[0])) {
+        int n1, n2;
+        stringstream ss(s1);
+        ss >> n1;
+        ss.clear();
+        ss.str(s2);
+        ss >> n2;
+
+        if (n1 != n2) return n1 < n2;
+
+        it1 = find_if(s1.begin(), s1.end(), is_not_digit);
+        it2 = find_if(s2.begin(), s2.end(), is_not_digit);
+    }
+
+    return lexicographical_compare(it1, s1.end(), it2, s2.end());
+}
+
 void WindowManagement::generate_combo()
 {
     // generate methods combo
@@ -233,8 +264,22 @@ void WindowManagement::generate_combo()
     }
     closedir(dp);
 
-    sort(this->scalar_infs.begin(), this->scalar_infs.end());
-    sort(this->scalar_raws.begin(), this->scalar_raws.end());
+    sort(this->scalar_infs.begin(), this->scalar_infs.end(), numeric_string_compare);
+    sort(this->scalar_raws.begin(), this->scalar_raws.end(), numeric_string_compare);
+
+    if((dp = opendir("./Data/Vector/")) != NULL)
+    {
+        while((dirp = readdir(dp)) != NULL)
+        {
+            string temp = dirp->d_name;
+            int index_vec = temp.find(".vec");
+
+            if(index_vec != string::npos) this->vector_files.push_back(temp.substr(0, index_vec));
+        }
+    }
+    closedir(dp);
+
+    sort(this->vector_files.begin(), this->vector_files.end(), numeric_string_compare);
 
     // for(auto it: this->scalar_filenames)
     // {
@@ -601,12 +646,19 @@ void WindowManagement::imgui()
     static bool is_show = false;
     static string selected_inf = "engine";
     static string selected_raw = "engine";
+    static string selected_vec = "1";
     static int iso_value = 80;
     static float g_max = 160.0f;
+
+    static double gap = 3.0;
+    static int iter_times = 500;
+    static double h = 0.3;
+    static double limit = 0.9;
 
     static vector<string> selectable_methods = {
         "iso surface",
         "volume rendering",
+        "streamline",
     };
     static string selected_method = "iso surface";
 
@@ -662,39 +714,6 @@ void WindowManagement::imgui()
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-            ImGui::Text("File");
-
-            if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
-            {
-                for (int i = 0; i < scalar_infs.size(); i++)
-                {
-                    if (ImGui::Selectable(scalar_infs[i].c_str()))
-                    {
-                        selected_inf = scalar_infs[i];
-                        selected_raw = scalar_infs[i];
-                        is_load = false;
-                        is_show = false;
-                    }
-                }
-
-                ImGui::EndCombo();
-            }
-
-            if (ImGui::BeginCombo(".raw", selected_raw.c_str()))
-            {
-                for (int i = 0; i < scalar_raws.size(); i++)
-                {
-                    if (ImGui::Selectable(scalar_raws[i].c_str()))
-                    {
-                        selected_raw = scalar_raws[i];
-                        is_load = false;
-                        is_show = false;
-                    }
-                }
-
-                ImGui::EndCombo();
-            }
-
             if(ImGui::BeginCombo("Method", selected_method.c_str()))
             {
                 for(int i = 0; i < selectable_methods.size(); i++)
@@ -707,40 +726,111 @@ void WindowManagement::imgui()
                             this->method = METHODS::ISO_SURFACE;
                         else if(i == METHODS::VOLUME_RENDERING)
                             this->method = METHODS::VOLUME_RENDERING;
+                        else if(i == METHODS::STREAMLINE)
+                            this->method = METHODS::STREAMLINE;
                     }
                 }
 
                 ImGui::EndCombo();
             }
 
-            if(this->method == METHODS::ISO_SURFACE)
+            ImGui::Text("File");
+
+            if(this->method == METHODS::ISO_SURFACE || this->method == METHODS::VOLUME_RENDERING)
             {
-                ImGui::InputInt("Iso Value", &iso_value);
+                if (ImGui::BeginCombo(".inf", selected_inf.c_str()))
+                {
+                    for (int i = 0; i < scalar_infs.size(); i++)
+                    {
+                        if (ImGui::Selectable(scalar_infs[i].c_str()))
+                        {
+                            selected_inf = scalar_infs[i];
+                            selected_raw = scalar_infs[i];
+                            is_load = false;
+                            is_show = false;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                if (ImGui::BeginCombo(".raw", selected_raw.c_str()))
+                {
+                    for (int i = 0; i < scalar_raws.size(); i++)
+                    {
+                        if (ImGui::Selectable(scalar_raws[i].c_str()))
+                        {
+                            selected_raw = scalar_raws[i];
+                            is_load = false;
+                            is_show = false;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                if(this->method == METHODS::ISO_SURFACE)
+                {
+                    ImGui::InputInt("Iso Value", &iso_value);
+                }
+            }
+            else if(this->method == METHODS::STREAMLINE)
+            {
+                if (ImGui::BeginCombo(".vec", selected_vec.c_str()))
+                {
+                    for (int i = 0; i < vector_files.size(); i++)
+                    {
+                        if (ImGui::Selectable(vector_files[i].c_str()))
+                        {
+                            selected_vec = vector_files[i];
+                            is_load = false;
+                            is_show = false;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
             }
 
             if (ImGui::Button("Load", ImVec2(100.0f, 30.0f)))
             {
-                if(!this->showing_last && this->volumes.size() > 0)
-                    this->volumes.pop_back();
+                if(!this->showing_last)
+                {
+                    if( (this->method == METHODS::ISO_SURFACE || this->method == METHODS::VOLUME_RENDERING) &&
+                         this->volumes.size() > 0)
+                        this->volumes.pop_back();
+
+                    else if(this->method == METHODS::STREAMLINE &&
+                            this->streamlines.size() > 0)
+                        this->streamlines.pop_back();
+                }
 
                 is_load = true;
 
                 // if(this->test_volume != NULL)
                 //     delete this->test_volume;
+                if( (this->method == METHODS::ISO_SURFACE || this->method == METHODS::VOLUME_RENDERING))
+                {
+                    this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", this->method, iso_value, pow(2, g_max / 20)));
 
-                this->volumes.push_back(Volume("./Data/Scalar/" + selected_inf + ".inf", "./Data/Scalar/" + selected_raw + ".raw", this->method, iso_value, pow(2, g_max / 20)));
+                    cout << "Load: " << this->volumes.back().vao.count << endl;
+                }
+                else if(this->method == METHODS::STREAMLINE)
+                {
+                    this->streamlines.push_back(Streamline("./Data/Vector/" + selected_vec + ".vec", gap, iter_times, h, limit));
 
-                cout << "Load: " << this->volumes.back().vao.count << endl;
+                    cout << "Load: " << this->streamlines.back().vao_count() << endl;
+                }
 
                 this->showing_last = false;
             }
 
-            if(this->volumes.size() > 0)
-                ImGui::SameLine();
+            ImGui::SameLine();
 
-            if (this->volumes.size() > 0 && ImGui::Button("Clear", ImVec2(100.0f, 30.0f)))
+            if (ImGui::Button("Clear", ImVec2(100.0f, 30.0f)))
             {
                 this->volumes.clear();
+                this->streamlines.clear();
 
                 is_load = false;
 
@@ -751,11 +841,22 @@ void WindowManagement::imgui()
             {
                 this->showing_last = true;
 
-                Volume tmp = this->volumes.back();
+                if( (this->method == METHODS::ISO_SURFACE || this->method == METHODS::VOLUME_RENDERING))
+                {
+                    Volume tmp = this->volumes.back();
 
-                this->volumes.clear();
+                    this->volumes.clear();
 
-                this->volumes.push_back(tmp);
+                    this->volumes.push_back(tmp);
+                }
+                else if(this->method == METHODS::STREAMLINE)
+                {
+                    Streamline tmp = this->streamlines.back();
+
+                    this->streamlines.clear();
+
+                    this->streamlines.push_back(tmp);
+                }
 
                 cout << "Show" << endl;
 
@@ -814,6 +915,45 @@ void WindowManagement::imgui()
                     this->volume_rendering_modifier = 5;
             }
 
+            static double old_gap = gap;
+            static int old_iter_times = iter_times;
+            static double old_h = h;
+            static double old_limit = limit;
+
+            if(this->method == METHODS::STREAMLINE)
+            {
+                ImGui::InputDouble("gap##1", &gap, 0.1, 1);
+                ImGui::InputInt("iteration times", &iter_times, 10, 50);
+                ImGui::InputDouble("h##1", &h, 0.1, 1);
+                ImGui::InputDouble("limit", &limit, 0.05, 0.1);
+
+                ImGui::InputFloat("tapering", &this->tapering_modifier, 0.1, 0.5);
+            }
+
+            if(old_gap != gap || old_iter_times != iter_times || old_h != h || old_limit != limit)
+            {
+                if(gap < 0.1)
+                    gap = glm::clamp(old_gap, 0.1, old_gap);
+                else if(iter_times < 2)
+                    iter_times = glm::clamp(old_iter_times, 2, old_iter_times);
+                else if(h < 0.1)
+                    h = glm::clamp(old_h, 0.1, old_h);
+                else if(limit < 0.01)
+                    limit = glm::clamp(old_limit, 0.01, old_limit);
+                else
+                {
+                    old_gap = gap;
+                    old_iter_times = iter_times;
+                    old_h = h;
+                    old_limit = limit;
+                }
+
+                if(this->streamlines.size() >= 1)
+                    this->streamlines.back().reload(gap, iter_times, h, limit);
+            }
+
+            tapering_modifier = glm::clamp(tapering_modifier, 0.01f, 5.0f);
+
             if(this->method == METHODS::ISO_SURFACE)
             {
                 ImGui::Text("Slicing Plane");
@@ -831,7 +971,10 @@ void WindowManagement::imgui()
                 }
 
                 ImGui::Checkbox("Section", &enable_section);
+            }
 
+            if(this->method == METHODS::ISO_SURFACE || this->method == METHODS::STREAMLINE)
+            {
                 ImGui::Text("Base Color");
 
                 ImGui::SliderFloat("red", &base_color.x, 0.0f, 1.0f, "%.2f");
@@ -1236,14 +1379,14 @@ void WindowManagement::render_scene()
     {
         if(this->volumes[i].method == METHODS::ISO_SURFACE)
         {
-            this->shader.use();
+            this->shader_iso_surface.use();
 
-            shader.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
-            shader.set_uniform("projection", projection);
-            shader.set_uniform("light_color", light_color);
-            shader.set_uniform("enable_section", enable_section);
-            shader.set_uniform("base_color", base_color);
-            camera.use(shader);
+            shader_iso_surface.set_uniform("clip", glm::vec4(this->clip_x, this->clip_y, this->clip_z, this->clip));
+            shader_iso_surface.set_uniform("projection", projection);
+            shader_iso_surface.set_uniform("light_color", light_color);
+            shader_iso_surface.set_uniform("enable_section", enable_section);
+            shader_iso_surface.set_uniform("base_color", base_color);
+            camera.use(shader_iso_surface);
         }
         else if(this->volumes[i].method == METHODS::VOLUME_RENDERING)
         {
@@ -1272,7 +1415,7 @@ void WindowManagement::render_scene()
         if(this->volumes[i].method == METHODS::ISO_SURFACE)
         {
             model = glm::translate(model, -glm::vec3(this->volumes[i].resolution) / 2.0f * this->volumes[i].voxelsize);
-            shader.set_uniform("model", model);
+            shader_iso_surface.set_uniform("model", model);
         }
         else if(this->volumes[i].method == METHODS::VOLUME_RENDERING)
         {
@@ -1282,6 +1425,25 @@ void WindowManagement::render_scene()
         }
 
         this->volumes[i].draw();
+    }
+
+    for(int i = 0; i < this->streamlines.size(); i++)
+    {
+        this->shader_streamline.use();
+
+        shader_streamline.set_uniform("projection", projection);
+        shader_streamline.set_uniform("base_color", base_color);
+        shader_streamline.set_uniform("modifier", tapering_modifier);
+        camera.use(shader_streamline);
+
+        if(i == this->streamlines.size() - 1 && !this->showing_last)
+            continue;
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, -glm::vec3(this->streamlines[i].resolution() / 2.0f));
+        shader_streamline.set_uniform("model", model);
+
+        this->streamlines[i].draw();
     }
 
     glBindVertexArray(0);
@@ -1303,8 +1465,9 @@ void WindowManagement::keyboard_down(int key)
             exit(0);
 
         case GLFW_KEY_R:
-            this->shader.reload();
+            this->shader_iso_surface.reload();
             this->shader_volume_rendering.reload();
+            this->shader_streamline.reload();
 
             break;
     }

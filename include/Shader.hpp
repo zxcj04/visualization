@@ -19,9 +19,9 @@ class Shader
 
         Shader();
         // ctor reads and builds the shader
-        Shader(string vertexPath, string fragmentPath);
+        Shader(string vertexPath, string fragmentPath, string geometryPath = "");
 
-        void load(string vertexPath, string fragmentPath, bool init = false);
+        void load(string vertexPath, string fragmentPath, string geometryPath, bool init = false);
         void reload();
 
         // activate the shader
@@ -36,6 +36,6 @@ class Shader
 
     private:
 
-        GLuint _vertex, _fragment;
-        string _vert, _frag;
+        GLuint _vertex, _fragment, _geometry;
+        string _vert, _frag, _geom;
 };
