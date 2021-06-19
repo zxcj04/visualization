@@ -3,13 +3,18 @@ layout (lines) in;
 layout (triangle_strip, max_vertices = 4) out;
 
 in VS_OUT {
+    float rValue;
     float rWidth;
 } gs_in[];
+
+out float value;
 
 uniform float modifier;
 
 void main()
 {
+    value = gs_in[0].rValue;
+
     float width = gs_in[0].rWidth;
 
     vec4 line = gl_in[1].gl_Position - gl_in[0].gl_Position;

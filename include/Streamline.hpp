@@ -39,6 +39,13 @@ class Streamline
 
         void reload(double gap, int iter_times, double h, double limit);
 
+        double max_value();
+
+        void calc_1dtexture();
+        void load_texture1d();
+
+        void reload_1d_texture(vector<ImVector<ImVec2>>);
+
     private:
         string vec_filename;
 
@@ -50,4 +57,9 @@ class Streamline
         vector<double> vertex;
 
         VAO vao;
+
+        double value_max;
+
+        unsigned char (*texture_data_1d)[4];
+        unsigned int texture_1d;
 };
