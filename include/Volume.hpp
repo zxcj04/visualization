@@ -13,6 +13,7 @@
 
 #include "imgui/imgui.h"
 
+#include "VAO.hpp"
 #include "constants.hpp"
 
 using namespace std;
@@ -25,12 +26,6 @@ enum TYPE
 enum ENDIAN
 {
     LITTLE, BIG
-};
-class VAO
-{
-    public:
-        GLuint id;
-        int count;
 };
 
 class Volume

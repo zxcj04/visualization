@@ -20,30 +20,34 @@ Shader::Shader()
 
 }
 
-Shader::Shader(string vertexPath, string fragmentPath)
+Shader::Shader(string vertexPath, string fragmentPath, string geometryPath)
 {
     this->_vert = vertexPath;
     this->_frag = fragmentPath;
+    this->_geom = geometryPath;
 
-    this->load(vertexPath, fragmentPath, true);
+    this->load(vertexPath, fragmentPath, geometryPath, true);
 }
 
-void Shader::load(string vertexPath, string fragmentPath, bool init)
+void Shader::load(string vertexPath, string fragmentPath, string geometryPath, bool init)
 {
     // 1. read file
     string vertexCode;
     string fragmentCode;
+    string geometryCode;
     ifstream vShaderFile;
     ifstream fShaderFile;
+    ifstream gShaderFile;
 
     vShaderFile.exceptions(ifstream::failbit | ifstream::badbit);
     fShaderFile.exceptions(ifstream::failbit | ifstream::badbit);
+    gShaderFile.exceptions(ifstream::failbit | ifstream::badbit);
 
     try{
         // open files
         vShaderFile.open(vertexPath);
         fShaderFile.open(fragmentPath);
-        stringstream vShaderStream, fShaderStream;
+        stringstream vShaderStream, fShaderStream, gShaderStream;
 
         vShaderStream << vShaderFile.rdbuf();
         fShaderStream << fShaderFile.rdbuf();
@@ -54,6 +58,14 @@ void Shader::load(string vertexPath, string fragmentPath, bool init)
         vertexCode   = vShaderStream.str();
         fragmentCode = fShaderStream.str();
 
+        if(geometryPath != "")
+        {
+            gShaderFile.open(geometryPath);
+            gShaderStream << gShaderFile.rdbuf();
+            gShaderFile.close();
+            geometryCode = gShaderStream.str();
+        }
+
     }
     catch(const ifstream::failure &e){
         cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READED" << endl;
@@ -61,9 +73,11 @@ void Shader::load(string vertexPath, string fragmentPath, bool init)
     const char* vShaderCode = vertexCode.c_str();
     const char* fShaderCode = fragmentCode.c_str();
 
+    const char* gShaderCode = geometryCode.c_str();
+
 
     // 2. compile shaders
-    GLuint vertex, fragment;
+    GLuint vertex, fragment, geometry;
     GLint success;
     GLchar infoLog[512];
 
@@ -86,11 +100,27 @@ void Shader::load(string vertexPath, string fragmentPath, bool init)
 
     glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
     if(!success){
-        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
         cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED" << infoLog << endl;
     }
     else{
         cout << "SUCCESS::SHADER::FRAGMENT::COMPILATION" << endl;
+    }
+
+    if(geometryPath != "")
+    {
+        geometry = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometry, 1, &gShaderCode, NULL);
+        glCompileShader(geometry);
+
+        glGetShaderiv(geometry, GL_COMPILE_STATUS, &success);
+        if(!success){
+            glGetShaderInfoLog(geometry, 512, NULL, infoLog);
+            cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED" << infoLog << endl;
+        }
+        else{
+            cout << "SUCCESS::SHADER::GEOMETRY::COMPILATION" << endl;
+        }
     }
 
     // shader program
@@ -102,10 +132,15 @@ void Shader::load(string vertexPath, string fragmentPath, bool init)
     {
         glDetachShader(ID, _vertex);
         glDetachShader(ID, _fragment);
+
+        if(geometryPath != "")
+            glDetachShader(ID, _geometry);
     }
 
     glAttachShader(ID, vertex);
     glAttachShader(ID, fragment);
+    if(geometryPath != "")
+        glAttachShader(ID, geometry);
     glLinkProgram(ID);
 
     // cc@adkevin3307
@@ -120,14 +155,18 @@ void Shader::load(string vertexPath, string fragmentPath, bool init)
 
     _vertex = vertex;
     _fragment = fragment;
+    if(geometryPath != "")
+        _geometry = geometry;
     // delete the shader as they-re linked into our program now and no longer necessery
     glDeleteShader(vertex);
     glDeleteShader(fragment);
+    if(geometryPath != "")
+        glDeleteShader(geometry);
 }
 
 void Shader::reload()
 {
-    this->load(_vert, _frag);
+    this->load(_vert, _frag, _geom);
 }
 
 void Shader::use()

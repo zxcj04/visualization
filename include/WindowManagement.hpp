@@ -27,6 +27,7 @@
 #include "Shader.hpp"
 #include "Camera.hpp"
 #include "Volume.hpp"
+#include "Streamline.hpp"
 
 #ifndef M_PI
 #define M_PI acos(-1)
@@ -96,13 +97,16 @@ class WindowManagement
 
         METHODS method;
         vector<string> scalar_infs, scalar_raws;
+        vector<string> vector_files;
         vector<string> color_template_files;
 
         /*-----Create image space for textures -----*/
         unsigned int   textName[5];
 
-        Shader shader;
+        Shader shader_iso_surface;
         Shader shader_volume_rendering;
+        Shader shader_streamline;
+
         Camera camera;
 
         bool showing_last;
@@ -115,6 +119,7 @@ class WindowManagement
 
         // Volume *test_volume;
         vector<Volume> volumes;
+        vector<Streamline> streamlines;
 
         glm::vec3 base_color;
 
@@ -126,4 +131,6 @@ class WindowManagement
         float volume_rendering_gap;
         float volume_rendering_last_decay;
         float volume_rendering_modifier;
+
+        float tapering_modifier;
 };
