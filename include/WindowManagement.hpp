@@ -28,6 +28,7 @@
 #include "Camera.hpp"
 #include "Volume.hpp"
 #include "Streamline.hpp"
+#include "PCA.hpp"
 
 #ifndef M_PI
 #define M_PI acos(-1)
@@ -106,6 +107,7 @@ class WindowManagement
         Shader shader_iso_surface;
         Shader shader_volume_rendering;
         Shader shader_streamline;
+        Shader shader_pca;
 
         Camera camera;
 
@@ -120,6 +122,7 @@ class WindowManagement
         // Volume *test_volume;
         vector<Volume> volumes;
         vector<Streamline> streamlines;
+        vector<Pca> pcas;
 
         glm::vec3 base_color;
 
@@ -133,4 +136,6 @@ class WindowManagement
         float volume_rendering_modifier;
 
         float tapering_modifier;
+
+        float pca_threshold;
 };
