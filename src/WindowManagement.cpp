@@ -110,6 +110,7 @@ bool WindowManagement::init(string window_name)
     this->shader_iso_surface = Shader("./src/shaders/iso_surface.vert", "./src/shaders/iso_surface.frag");
     this->shader_volume_rendering = Shader("./src/shaders/volume_rendering.vert", "./src/shaders/volume_rendering.frag");
     this->shader_streamline = Shader("./src/shaders/streamline.vert", "./src/shaders/streamline.frag", "./src/shaders/streamline.gs");
+    this->shader_pca = Shader("./src/shaders/pca.vert", "./src/shaders/pca.frag", "./src/shaders/pca.gs");
 
     cout << this->shader_iso_surface.ID << endl;
     cout << this->shader_volume_rendering.ID << endl;
@@ -138,6 +139,8 @@ bool WindowManagement::init(string window_name)
     this->volume_rendering_modifier = 1;
 
     this->tapering_modifier = 0.3;
+
+    this->pca_threshold = 10000;
 
     // -----------------------------------------
 
@@ -661,6 +664,7 @@ void WindowManagement::imgui()
         "iso surface",
         "volume rendering",
         "streamline",
+        "PCA",
     };
     static string selected_method = "iso surface";
 
@@ -730,6 +734,8 @@ void WindowManagement::imgui()
                             this->method = METHODS::VOLUME_RENDERING;
                         else if(i == METHODS::STREAMLINE)
                             this->method = METHODS::STREAMLINE;
+                        else if(i == METHODS::PCA)
+                            this->method = METHODS::PCA;
                     }
                 }
 
@@ -805,6 +811,10 @@ void WindowManagement::imgui()
                     else if(this->method == METHODS::STREAMLINE &&
                             this->streamlines.size() > 0)
                         this->streamlines.pop_back();
+
+                    else if(this->method == METHODS::PCA &&
+                            this->pcas.size() > 0)
+                        this->pcas.pop_back();
                 }
 
                 is_load = true;
@@ -823,6 +833,12 @@ void WindowManagement::imgui()
 
                     cout << "Load: " << this->streamlines.back().vao_count() << endl;
                 }
+                else if(this->method == METHODS::PCA)
+                {
+                    this->pcas.push_back(Pca(pca_threshold));
+
+                    cout << "Load: " << this->pcas.back().vao_count() << endl;
+                }
 
                 this->showing_last = false;
             }
@@ -833,6 +849,7 @@ void WindowManagement::imgui()
             {
                 this->volumes.clear();
                 this->streamlines.clear();
+                this->pcas.clear();
 
                 is_load = false;
 
@@ -848,6 +865,8 @@ void WindowManagement::imgui()
                     Volume tmp = this->volumes.back();
 
                     this->volumes.clear();
+                    this->streamlines.clear();
+                    this->pcas.clear();
 
                     this->volumes.push_back(tmp);
                 }
@@ -855,9 +874,21 @@ void WindowManagement::imgui()
                 {
                     Streamline tmp = this->streamlines.back();
 
+                    this->volumes.clear();
                     this->streamlines.clear();
+                    this->pcas.clear();
 
                     this->streamlines.push_back(tmp);
+                }
+                else if(this->method == METHODS::PCA)
+                {
+                    Pca tmp = this->pcas.back();
+
+                    this->volumes.clear();
+                    this->streamlines.clear();
+                    this->pcas.clear();
+
+                    this->pcas.push_back(tmp);
                 }
 
                 cout << "Show" << endl;
@@ -952,6 +983,26 @@ void WindowManagement::imgui()
 
                 if(this->streamlines.size() >= 1)
                     this->streamlines.back().reload(gap, iter_times, h, limit);
+            }
+
+            static double old_threshold = pca_threshold;
+
+            if(this->method == METHODS::PCA)
+            {
+                ImGui::InputFloat("threshold##1", &this->pca_threshold, 1000, 5000);
+            }
+
+            if(old_threshold != pca_threshold)
+            {
+                if(pca_threshold < 0)
+                    pca_threshold = 0;
+                else
+                {
+                    old_threshold = pca_threshold;
+
+                    if(this->pcas.size() >= 1)
+                        this->pcas.back().reload(pca_threshold);
+                }
             }
 
             tapering_modifier = glm::clamp(tapering_modifier, 0.01f, 5.0f);
@@ -1459,6 +1510,24 @@ void WindowManagement::render_scene()
         this->streamlines[i].draw();
     }
 
+    for(int i = 0; i < this->pcas.size(); i++)
+    {
+        this->shader_pca.use();
+
+        shader_pca.set_uniform("projection", projection);
+        shader_pca.set_uniform("using_texture1", 1);
+        camera.use(shader_pca);
+
+        if(i == this->pcas.size() - 1 && !this->showing_last)
+            continue;
+
+        model = glm::mat4(1.0f);
+        // model = glm::translate(model, -glm::vec3(this->streamlines[i].resolution() / 2.0f));
+        shader_pca.set_uniform("model", model);
+
+        this->pcas[i].draw();
+    }
+
     glBindVertexArray(0);
 }
 
@@ -1481,6 +1550,7 @@ void WindowManagement::keyboard_down(int key)
             this->shader_iso_surface.reload();
             this->shader_volume_rendering.reload();
             this->shader_streamline.reload();
+            this->shader_pca.reload();
 
             break;
     }
